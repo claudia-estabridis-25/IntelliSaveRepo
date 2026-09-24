@@ -5,13 +5,17 @@ import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pe.edu.upc.trabajoavance_kevin.dtos.UserDTO;
 import pe.edu.upc.trabajoavance_kevin.entities.Role;
 import pe.edu.upc.trabajoavance_kevin.entities.User;
 import pe.edu.upc.trabajoavance_kevin.exceptions.ResourceNotFoundException;
 import pe.edu.upc.trabajoavance_kevin.servicesinterfaces.IRoleService;
 import pe.edu.upc.trabajoavance_kevin.servicesinterfaces.IUserService;
+
+import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/users")
@@ -26,53 +30,118 @@ public class UserController {
         this.modelMapper = modelMapper;
     }
 
-    @PostMapping
-    public ResponseEntity<UserDTO> register(@Valid @RequestBody UserDTO dto) {
-        Role role = rS.listId(dto.getIdRole()).orElseThrow(() -> new ResourceNotFoundException("No existe el rol con id: " + dto.getIdRole()));
-        User user = modelMapper.map(dto, User.class);
-        user.setRole(role);
-        uS.insert(user);
-        UserDTO result = modelMapper.map(user, UserDTO.class);
-        result.setIdRole(role.getIdRole());
-        return new ResponseEntity<>(result, HttpStatus.CREATED);
+    @GetMapping
+    public ResponseEntity<List<UserDTO>> listar() {
+
+        List<UserDTO> lista = uS.list()
+                .stream()
+                .map(use -> modelMapper.map(use, UserDTO.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
     }
 
-    @GetMapping
-    public List<UserDTO> list() {
-        return uS.list().stream().map(this::toDTO).toList();
+    @PostMapping
+    public ResponseEntity<UserDTO> registrar(
+            @Valid @RequestBody UserDTO dto) {
+        Role role = rS.listId(dto.getIdUser())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe el usuario con el id: " + dto.getIdUser()
+                        )
+                );
+        User us = modelMapper.map(dto, User.class);
+        us.setRole(role);
+        uS.insert(us);
+
+        UserDTO responseDTO =
+                modelMapper.map(us, UserDTO.class);
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(us.getIdUser())
+                .toUri();
+
+        return ResponseEntity
+                .created(location)
+                .body(responseDTO);
     }
 
     @GetMapping("/{id}")
-    public UserDTO listId(@PathVariable Long id) {
-        User user = uS.listId(id).orElseThrow(() -> new ResourceNotFoundException("No existe el usuario con id: " + id));
-        return toDTO(user);
+    public ResponseEntity<UserDTO> buscarPorId(
+            @PathVariable Long id) {
+
+        User us = uS.listId(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe un usuario con el id: " + id
+                        )
+                );
+
+        UserDTO dto = modelMapper.map(us, UserDTO.class);
+        return ResponseEntity.ok(dto);
     }
 
     @PutMapping
-    public UserDTO update(@Valid @RequestBody UserDTO dto) {
-        User existing = uS.listId(dto.getIdUser()).orElseThrow(() -> new ResourceNotFoundException("No existe el usuario con id: " + dto.getIdUser()));
-        Role role = rS.listId(dto.getIdRole()).orElseThrow(() -> new ResourceNotFoundException("No existe el rol con id: " + dto.getIdRole()));
-        modelMapper.map(dto, existing);
-        existing.setRole(role);
-        uS.update(existing);
-        return toDTO(existing);
+    public ResponseEntity<UserDTO> actualizar(
+            @Valid @RequestBody UserDTO dto) {
+
+        // 1. Verificar que la actividad exista
+        Optional<User> existente = uS.listId(dto.getIdUser());
+
+        if (existente.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No existe una actividad con el id: " + dto.getIdUser()
+            );
+        }
+
+        // 2. Verificar que el cultivo exista
+        Optional<Role> role = rS.listId(dto.getIdRole());
+
+        if (role.isEmpty()) {
+            throw new ResourceNotFoundException(
+                    "No existe un role con el id: " + dto.getIdRole()
+            );
+        }
+
+        // 3. Obtener la actividad existente
+        User user = existente.get();
+
+        // 4. Actualizar sus campos
+        user.setPosition(dto.getPosition());
+        user.setDocumentNumber(dto.getDocumentNumber());
+        user.setFirstName(dto.getFirstName());
+        user.setSecondName(dto.getSecondName());
+        user.setPaternalLastName(dto.getPaternalLastName());
+        user.setMaternalLastName(dto.getMaternalLastName());
+        user.setEmail(dto.getEmail());
+        user.setPassword(dto.getPassword());
+        user.setPhone(dto.getPhone());
+        user.setStatus(dto.getStatus());
+        // 5. Asignar el cultivo existente
+        user.setRole(role.get());
+
+        // 6. Guardar
+        uS.update(user);
+
+        // 7. Convertir a DTO
+        UserDTO responseDTO =
+                modelMapper.map(user, UserDTO.class);
+
+        return ResponseEntity.ok(responseDTO);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        uS.listId(id).orElseThrow(() -> new ResourceNotFoundException("No existe el usuario con id: " + id));
-        uS.delete(id);
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        User ac = uS.listId(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe una actividad con el id: " + id
+                        )
+                );
+        uS.delete(ac.getIdUser());
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/status")
-    public List<UserDTO> findByStatus(@RequestParam Boolean status) {
-        return uS.findByStatus(status).stream().map(this::toDTO).toList();
-    }
-
-    private UserDTO toDTO(User user) {
-        UserDTO dto = modelMapper.map(user, UserDTO.class);
-        if (user.getRole() != null) dto.setIdRole(user.getRole().getIdRole());
-        return dto;
-    }
 }

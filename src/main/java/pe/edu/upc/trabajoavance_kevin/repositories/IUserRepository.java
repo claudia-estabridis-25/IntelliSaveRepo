@@ -7,5 +7,5 @@ import java.util.List;
 
 @Repository
 public interface IUserRepository extends JpaRepository<User, Long> {
-    List<User> findByStatus(Boolean status);
+    List<User> findByStatus(boolean status);
 }

@@ -3,18 +3,14 @@ package pe.edu.upc.trabajoavance_kevin.entities;
 import jakarta.persistence.*;
 
 @Entity
-@Table(name = "role")
+@Table(name = "roles")
 public class Role {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "role_id")
     private Long idRole;
-
-    @Column(name = "role_name", length = 50, nullable = false)
+    @Column(name = "roleName", length = 50, nullable = false)
     private String roleName;
-
-    @Column(name = "role_description", length = 150)
+    @Column(name = "roleDescription", length = 150, nullable = false)
     private String roleDescription;
 
     public Role() {}

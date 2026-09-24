@@ -6,4 +6,5 @@ import pe.edu.upc.trabajoavance_kevin.entities.Role;
 
 @Repository
 public interface IRoleRepository extends JpaRepository<Role, Long> {
+
 }

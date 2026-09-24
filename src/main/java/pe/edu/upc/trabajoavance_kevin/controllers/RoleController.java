@@ -4,11 +4,15 @@ import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pe.edu.upc.trabajoavance_kevin.dtos.RoleDTO;
 import pe.edu.upc.trabajoavance_kevin.entities.Role;
 import pe.edu.upc.trabajoavance_kevin.exceptions.ResourceNotFoundException;
 import pe.edu.upc.trabajoavance_kevin.servicesinterfaces.IRoleService;
+
+import java.net.URI;
 import java.util.List;
 
 @RestController
@@ -22,36 +26,64 @@ public class RoleController {
         this.modelMapper = modelMapper;
     }
 
-    @PostMapping
-    public ResponseEntity<RoleDTO> register(@Valid @RequestBody RoleDTO dto) {
-        Role role = modelMapper.map(dto, Role.class);
-        rS.insert(role);
-        return new ResponseEntity<>(modelMapper.map(role, RoleDTO.class), HttpStatus.CREATED);
-    }
-
     @GetMapping
-    public List<RoleDTO> list() {
-        return rS.list().stream().map(x -> modelMapper.map(x, RoleDTO.class)).toList();
+    public ResponseEntity<List<RoleDTO>> listar() {
+
+        List<RoleDTO> lista = rS.list()
+                .stream()
+                .map(role -> modelMapper.map(role, RoleDTO.class))
+                .toList();
+        return ResponseEntity.ok(lista);
     }
 
-    @GetMapping("/{id}")
-    public RoleDTO listId(@PathVariable Long id) {
-        Role role = rS.listId(id).orElseThrow(() -> new ResourceNotFoundException("No existe el rol con id: " + id));
-        return modelMapper.map(role, RoleDTO.class);
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<RoleDTO> registrar(
+            @Valid @RequestBody RoleDTO dto) {
+
+        Role role = modelMapper.map(dto, Role.class);
+
+        rS.insert(role);
+
+        RoleDTO responseDTO =
+                modelMapper.map(role, RoleDTO.class);
+
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(role.getIdRole())
+                .toUri();
+
+        return ResponseEntity
+                .created(location)
+                .body(responseDTO);
     }
 
     @PutMapping
-    public RoleDTO update(@Valid @RequestBody RoleDTO dto) {
-        Role existing = rS.listId(dto.getIdRole()).orElseThrow(() -> new ResourceNotFoundException("No existe el rol con id: " + dto.getIdRole()));
-        modelMapper.map(dto, existing);
-        rS.update(existing);
-        return modelMapper.map(existing, RoleDTO.class);
+    public ResponseEntity<RoleDTO> actualizar(
+            @Valid @RequestBody RoleDTO dto) {
+        Role existente = rS.listId(dto.getIdRole())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe un role con el id: " + dto.getIdRole()
+                        )
+                );
+        Role crop = modelMapper.map(dto, Role.class);
+        crop.setIdRole(existente.getIdRole());
+        rS.update(crop);
+        RoleDTO responseDTO =
+                modelMapper.map(crop, RoleDTO.class);
+        return ResponseEntity.ok(responseDTO);
     }
-
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        rS.listId(id).orElseThrow(() -> new ResourceNotFoundException("No existe el rol con id: " + id));
-        rS.delete(id);
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        Role crop = rS.listId(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe un role con el id: " + id
+                        )
+                );
+        rS.delete(crop.getIdRole());
         return ResponseEntity.noContent().build();
     }
 }
