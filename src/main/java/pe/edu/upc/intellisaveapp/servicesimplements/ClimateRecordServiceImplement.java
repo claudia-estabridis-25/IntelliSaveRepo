@@ -23,22 +23,12 @@ public class ClimateRecordServiceImplement implements IClimateRecordService {
     }
 
     @Override
-    public void insert(ClimateRecord climate) {
-        cR.save(climate);
-    }
-
-    @Override
-    public void update(ClimateRecord climate) {
-        cR.save(climate);
-    }
-
-    @Override
     public Optional<ClimateRecord> listById(Long id) {
         return cR.findById(id);
     }
 
     @Override
-    public void delete(Long id) {
-        cR.deleteById(id);
+    public List<ClimateRecord> listByBranch(Long idBranch) {
+        return cR.findByBranch_IdBranch(idBranch);
     }
 }

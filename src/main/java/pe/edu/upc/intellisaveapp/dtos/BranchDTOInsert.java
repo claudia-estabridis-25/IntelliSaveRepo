@@ -11,6 +11,10 @@ public class BranchDTOInsert {
     private String addressBranch;
     @NotBlank(message = "La descripción de la sede es obligatoria")
     private String descriptionBranch;
+    @NotNull(message = "La latitud de la sede es obligatoria")
+    private double latitudeBranch;
+    @NotNull(message = "La longitud de la sede es obligatoria")
+    private double longitudeBranch;
     @NotNull(message = "El id de la empresa relacionada es obligatorio")
     private Long idCompany;
 
@@ -37,6 +41,22 @@ public class BranchDTOInsert {
 
     public void setAddressBranch(String addressBranch) {
         this.addressBranch = addressBranch;
+    }
+
+    public double getLatitudeBranch() {
+        return latitudeBranch;
+    }
+
+    public void setLatitudeBranch(double latitudeBranch) {
+        this.latitudeBranch = latitudeBranch;
+    }
+
+    public double getLongitudeBranch() {
+        return longitudeBranch;
+    }
+
+    public void setLongitudeBranch(double longitudeBranch) {
+        this.longitudeBranch = longitudeBranch;
     }
 
     public String getDescriptionBranch() {

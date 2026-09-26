@@ -3,6 +3,7 @@ package pe.edu.upc.intellisaveapp.dtos;
 public class BranchDTOList {
     private Long idBranch;
     private String nameBranch;
+    private String addressBranch;
     private Long idCompany;
 
 
@@ -20,6 +21,14 @@ public class BranchDTOList {
 
     public void setNameBranch(String nameBranch) {
         this.nameBranch = nameBranch;
+    }
+
+    public String getAddressBranch() {
+        return addressBranch;
+    }
+
+    public void setAddressBranch(String addressBranch) {
+        this.addressBranch = addressBranch;
     }
 
     public Long getIdCompany() {
