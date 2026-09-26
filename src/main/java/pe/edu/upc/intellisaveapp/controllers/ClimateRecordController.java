@@ -29,6 +29,57 @@ public class ClimateRecordController {
         this.modelMapper = modelMapper;
     }
 
+
+    //Listar todos
+    @GetMapping
+    public ResponseEntity<List<ClimateRecordDTO>> list() {
+        List<ClimateRecordDTO> lista = cS.list()
+                .stream()
+                .map(climateRecord -> modelMapper.map(climateRecord, ClimateRecordDTO.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    //Listar por id
+    @GetMapping("/{id}")
+    public ResponseEntity<ClimateRecordDTO> listById(@PathVariable Long id) {
+        ClimateRecord c = cS.listById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe un registro de clima con el id: " + id
+                        )
+                );
+
+        ClimateRecordDTO dto = modelMapper.map(c, ClimateRecordDTO.class);
+
+        return ResponseEntity.ok(dto);
+    }
+
+    //Listar registros de clima (o historial climático) de una sede específica
+    //Osea, por cada sede, voy a obtener sus registros climáticos (gracias a la API)
+    @GetMapping("/branch/{idBranch}")
+    public ResponseEntity<List<ClimateRecordDTO>> listByBranch(@PathVariable Long idBranch) {
+
+        //La lista implementada en IClimaRecordService es de tipo ClimateRecord, por lo que el objeto cS me trae
+        //ese tipo de dato (ClimateRecord); pero acá necesito una lista de tipo DTO, por eso se usa modelMapper, para
+        //poder convertir de tipo entidad (ClimateRecord) a tipo DTO (ClimateRecordDTO)
+
+        List<ClimateRecordDTO> lista = cS.listByBranch(idBranch)
+                .stream()
+                .map(climateRecord -> modelMapper.map(climateRecord, ClimateRecordDTO.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    /* En la API, este metodo hace:
+        GET /api/climate-records/branch/3
+       Osea, trae solo el historial climático de la Sede (Branch) con idBranch = 3
+    */
+
+
+    /*
     //Registrar
     @PostMapping
     public ResponseEntity<ClimateRecordDTO> register(@Valid @RequestBody ClimateRecordDTO dto) {
@@ -52,17 +103,6 @@ public class ClimateRecordController {
                 .toUri();
 
         return ResponseEntity.created(location).body(responseDTO);
-    }
-
-    //Listar todos
-    @GetMapping
-    public ResponseEntity<List<ClimateRecordDTO>> list() {
-        List<ClimateRecordDTO> lista = cS.list()
-                .stream()
-                .map(climateRecord -> modelMapper.map(climateRecord, ClimateRecordDTO.class))
-                .toList();
-
-        return ResponseEntity.ok(lista);
     }
 
     //Actualizar
@@ -102,21 +142,6 @@ public class ClimateRecordController {
     }
 
 
-    //Listar por id
-    @GetMapping("/{id}")
-    public ResponseEntity<ClimateRecordDTO> listById(@PathVariable Long id) {
-        ClimateRecord c = cS.listById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No existe un registro de clima con el id: " + id
-                        )
-                );
-
-        ClimateRecordDTO dto = modelMapper.map(c, ClimateRecordDTO.class);
-
-        return ResponseEntity.ok(dto);
-    }
-
     //Eliminar por id
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
@@ -131,5 +156,7 @@ public class ClimateRecordController {
 
         return ResponseEntity.noContent().build();
     }
+    */
+
 
 }

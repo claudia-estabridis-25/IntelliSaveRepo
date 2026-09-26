@@ -7,8 +7,8 @@ import java.util.Optional;
 
 public interface IClimateRecordService {
     public List<ClimateRecord> list();
-    public void insert(ClimateRecord climate);
-    public void update(ClimateRecord climate);
     public Optional<ClimateRecord> listById(Long id);
-    public void delete(Long id);
+    // Listar historial climático de una sede específica
+    public List<ClimateRecord> listByBranch(Long idBranch);
+
 }

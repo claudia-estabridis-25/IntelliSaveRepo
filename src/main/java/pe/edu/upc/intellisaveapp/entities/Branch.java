@@ -18,6 +18,12 @@ public class Branch {
     @Column(name = "description_branch", length = 90, nullable = false)
     private String descriptionBranch;
 
+    @Column(name = "latitudeBranch", nullable = true)
+    private double latitudeBranch;
+
+    @Column(name = "longitudeBranch", nullable = true)
+    private double longitudeBranch;
+
     @ManyToOne
     @JoinColumn(name = "idCompany", nullable = false)
     private Company company; //FK
@@ -26,11 +32,13 @@ public class Branch {
     }
 
     public Branch(Long idBranch, String nameBranch, String addressBranch, String descriptionBranch,
-                  Company company) {
+                  double latitudeBranch, double longitudeBranch, Company company) {
         this.idBranch = idBranch;
         this.nameBranch = nameBranch;
         this.addressBranch = addressBranch;
         this.descriptionBranch = descriptionBranch;
+        this.latitudeBranch = latitudeBranch;
+        this.longitudeBranch = longitudeBranch;
         this.company = company;
     }
 
@@ -64,6 +72,22 @@ public class Branch {
 
     public void setDescriptionBranch(String descriptionBranch) {
         this.descriptionBranch = descriptionBranch;
+    }
+
+    public double getLatitudeBranch() {
+        return latitudeBranch;
+    }
+
+    public void setLatitudeBranch(double latitudeBranch) {
+        this.latitudeBranch = latitudeBranch;
+    }
+
+    public double getLongitudeBranch() {
+        return longitudeBranch;
+    }
+
+    public void setLongitudeBranch(double longitudeBranch) {
+        this.longitudeBranch = longitudeBranch;
     }
 
     public Company getCompany() {
