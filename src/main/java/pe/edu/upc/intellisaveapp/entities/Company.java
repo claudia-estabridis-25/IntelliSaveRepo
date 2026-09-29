@@ -21,10 +21,10 @@ public class Company {
     @Column(name = "addressCompany", length = 60, nullable = false)
     private String addressCompany;
 
-    @Column(name = "phoneNumberCompany", length = 7, nullable = false)
+    @Column(name = "phoneNumberCompany", length = 9, nullable = false)
     private String phoneNumberCompany;
 
-    @Column(name = "emailCompany", length = 25, nullable = false)
+    @Column(name = "emailCompany", length = 50, nullable = false)
     private String emailCompany;
 
     @Column(name = "sectorCompany", length = 20, nullable = false)

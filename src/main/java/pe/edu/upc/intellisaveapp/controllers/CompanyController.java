@@ -42,6 +42,7 @@ public class CompanyController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CompanyDTOInsert> registrar(@Valid @RequestBody CompanyDTOInsert dto) {
         Company company = mP.map(dto, Company.class);
+        company.setIdCompany(null); //Un POST siempre crea una empresa nueva
 
         cS.insert(company);
 
@@ -60,6 +61,11 @@ public class CompanyController {
     @PutMapping
     public ResponseEntity<CompanyDTOInsert> actualizar(
             @Valid @RequestBody CompanyDTOInsert dto) {
+        if (dto.getIdCompany() == null) {
+            throw new pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException(
+                    "El id de la empresa es obligatorio para actualizar"
+            );
+        }
 
         Company existente = cS.listById(dto.getIdCompany())
                 .orElseThrow(() ->

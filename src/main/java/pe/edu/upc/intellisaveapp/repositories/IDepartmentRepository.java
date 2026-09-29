@@ -4,7 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import pe.edu.upc.intellisaveapp.entities.Department;
 
+import java.util.List;
+
 @Repository
 public interface IDepartmentRepository extends JpaRepository<Department, Long> {
-
+    List<Department> findByBranch_IdBranch(Long idBranch);
 }

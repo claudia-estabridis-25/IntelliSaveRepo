@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface IBranchService {
     public List<Branch> list();
+    public List<Branch> listByCompany(Long idCompany);
     public void insert(Branch b);
     public void update(Branch b);
     public Optional<Branch> listById(Long id);

@@ -16,10 +16,14 @@ public class DepartmentServiceImplement implements IDepartmentService {
         this.dR = dR;
     }
 
-
     @Override
     public List<Department> list() {
         return dR.findAll();
+    }
+
+    @Override
+    public List<Department> listByBranch(Long idBranch) {
+        return dR.findByBranch_IdBranch(idBranch);
     }
 
     @Override
