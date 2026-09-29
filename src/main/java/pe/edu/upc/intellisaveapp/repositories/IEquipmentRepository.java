@@ -8,5 +8,5 @@ import java.util.List;
 
 @Repository
 public interface IEquipmentRepository extends JpaRepository<Equipment, Long> {
-    List<Equipment> findByStatusEquipment(String statusEquipment);
+    List<Equipment> findByStatusEquipmentIgnoreCase(String statusEquipment);
 }

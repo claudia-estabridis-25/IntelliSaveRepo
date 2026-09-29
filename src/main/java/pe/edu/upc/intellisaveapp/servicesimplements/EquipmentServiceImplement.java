@@ -23,7 +23,7 @@ public class EquipmentServiceImplement implements IEquipmentService {
 
     @Override
     public List<Equipment> listByStatus(String status) {
-        return eR.findByStatusEquipment(status);
+        return eR.findByStatusEquipmentIgnoreCase(status);
     }
 
     @Override

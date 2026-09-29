@@ -9,6 +9,7 @@ import pe.edu.upc.intellisaveapp.dtos.ConsumptionRecordDTOInsert;
 import pe.edu.upc.intellisaveapp.dtos.ConsumptionRecordDTOList;
 import pe.edu.upc.intellisaveapp.entities.ConsumptionRecord;
 import pe.edu.upc.intellisaveapp.entities.Equipment;
+import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IEquipmentService;
@@ -47,7 +48,7 @@ public class ConsumptionRecordController {
     }
 
     @PostMapping
-    public ResponseEntity<ConsumptionRecordDTOInsert> registrar(@Valid @RequestBody ConsumptionRecordDTOInsert dto) {
+    public ResponseEntity<ConsumptionRecordDTOList> registrar(@Valid @RequestBody ConsumptionRecordDTOInsert dto) {
         Equipment equipment = eS.listById(dto.getIdEquipment())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -55,7 +56,10 @@ public class ConsumptionRecordController {
                         )
                 );
 
+        validarEquipoActivo(equipment);
+
         ConsumptionRecord cr = mP.map(dto, ConsumptionRecord.class);
+        cr.setIdConsumptionRecord(null); // Un POST siempre crea un registro nuevo
         cr.setEquipment(equipment);
 
         Double kwhConsumption = (equipment.getWattPowerEquipment() * dto.getHoursOfUse()) / 1000;
@@ -64,7 +68,7 @@ public class ConsumptionRecordController {
 
         crS.insert(cr);
 
-        ConsumptionRecordDTOInsert responseDTO = mP.map(cr, ConsumptionRecordDTOInsert.class);
+        ConsumptionRecordDTOList responseDTO = mP.map(cr, ConsumptionRecordDTOList.class);
 
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
@@ -76,7 +80,11 @@ public class ConsumptionRecordController {
     }
 
     @PutMapping
-    public ResponseEntity<ConsumptionRecordDTOInsert> actualizar(@Valid @RequestBody ConsumptionRecordDTOInsert dto) {
+    public ResponseEntity<ConsumptionRecordDTOList> actualizar(@Valid @RequestBody ConsumptionRecordDTOInsert dto) {
+        if (dto.getIdConsumptionRecord() == null) {
+            throw new BusinessRuleException("El id del registro de consumo es obligatorio para actualizar");
+        }
+
         ConsumptionRecord existente = crS.listById(dto.getIdConsumptionRecord())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -91,6 +99,11 @@ public class ConsumptionRecordController {
                         )
                 );
 
+        // Si se cambia el equipo del registro, el nuevo equipo debe estar activo
+        if (!equipment.getIdEquipment().equals(existente.getEquipment().getIdEquipment())) {
+            validarEquipoActivo(equipment);
+        }
+
         ConsumptionRecord cr = mP.map(dto, ConsumptionRecord.class);
         cr.setIdConsumptionRecord(existente.getIdConsumptionRecord());
         cr.setEquipment(equipment);
@@ -101,7 +114,7 @@ public class ConsumptionRecordController {
 
         crS.update(cr);
 
-        ConsumptionRecordDTOInsert responseDTO = mP.map(cr, ConsumptionRecordDTOInsert.class);
+        ConsumptionRecordDTOList responseDTO = mP.map(cr, ConsumptionRecordDTOList.class);
 
         return ResponseEntity.ok(responseDTO);
     }
@@ -181,19 +194,31 @@ public class ConsumptionRecordController {
 
     @GetMapping("/department/{idDepartment}/elevated-consumption")
     public ResponseEntity<List<ElevatedConsumptionDTO>> equiposConsumoElevado(@PathVariable Long idDepartment) {
-        Double promedio = crS.averageKwhByDepartment(idDepartment);
-        Double umbral = promedio * 1.3;
-
-        Map<pe.edu.upc.intellisaveapp.entities.Equipment, Double> totalPorEquipo = crS.listByDepartment(idDepartment)
+        // 1. Consumo total (kWh) de cada equipo del área
+        Map<Equipment, Double> totalPorEquipo = crS.listByDepartment(idDepartment)
                 .stream()
                 .collect(Collectors.groupingBy(
                         ConsumptionRecord::getEquipment,
                         Collectors.summingDouble(ConsumptionRecord::getKwhConsumption)
                 ));
 
+        if (totalPorEquipo.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        // 2. Promedio del área = promedio de los totales de sus equipos
+        Double promedio = totalPorEquipo.values()
+                .stream()
+                .mapToDouble(Double::doubleValue)
+                .average()
+                .orElse(0.0);
+
+        // 3. Consumo elevado = 30% o más sobre el promedio del área
+        Double umbral = promedio * 1.3;
+
         List<ElevatedConsumptionDTO> resultado = totalPorEquipo.entrySet()
                 .stream()
-                .filter(entry -> entry.getValue() > umbral)
+                .filter(entry -> entry.getValue() >= umbral)
                 .map(entry -> {
                     ElevatedConsumptionDTO dto = new ElevatedConsumptionDTO();
                     dto.setIdEquipment(entry.getKey().getIdEquipment());
@@ -206,5 +231,14 @@ public class ConsumptionRecordController {
                 .toList();
 
         return ResponseEntity.ok(resultado);
+    }
+
+    private void validarEquipoActivo(Equipment equipment) {
+        if ("Inactivo".equalsIgnoreCase(equipment.getStatusEquipment())) {
+            throw new BusinessRuleException(
+                    "El equipo con id " + equipment.getIdEquipment()
+                            + " está dado de baja y no puede registrar consumo"
+            );
+        }
     }
 }

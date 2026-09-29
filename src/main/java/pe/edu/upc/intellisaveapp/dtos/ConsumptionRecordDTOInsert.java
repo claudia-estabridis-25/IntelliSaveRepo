@@ -1,6 +1,8 @@
 package pe.edu.upc.intellisaveapp.dtos;
 
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDateTime;
 
@@ -13,6 +15,8 @@ public class ConsumptionRecordDTOInsert {
     @NotNull(message = "La fecha y hora del registro son obligatorias")
     private LocalDateTime dateTimeRecord;
     @NotNull(message = "Las horas de uso son obligatorias")
+    @Positive(message = "Ingrese un valor de horas de uso válido")
+    @DecimalMax(value = "24", message = "Las horas de uso no pueden superar 24 por registro")
     private Double hoursOfUse;
     private String observationRecord;
 

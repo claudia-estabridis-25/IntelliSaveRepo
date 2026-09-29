@@ -9,6 +9,7 @@ import pe.edu.upc.intellisaveapp.dtos.EquipmentDTOInsert;
 import pe.edu.upc.intellisaveapp.dtos.EquipmentDTOList;
 import pe.edu.upc.intellisaveapp.entities.Department;
 import pe.edu.upc.intellisaveapp.entities.Equipment;
+import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IEquipmentService;
@@ -49,6 +50,7 @@ public class EquipmentController {
                 );
 
         Equipment equipment = mP.map(dto, Equipment.class);
+        equipment.setIdEquipment(null); // Un POST siempre crea un equipo nuevo
         equipment.setDepartment(department);
         eS.insert(equipment);
 
@@ -65,6 +67,10 @@ public class EquipmentController {
 
     @PutMapping
     public ResponseEntity<EquipmentDTOInsert> actualizar(@Valid @RequestBody EquipmentDTOInsert dto) {
+        if (dto.getIdEquipment() == null) {
+            throw new BusinessRuleException("El id del equipo es obligatorio para actualizar");
+        }
+
         Equipment existente = eS.listById(dto.getIdEquipment())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -91,7 +97,7 @@ public class EquipmentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EquipmentDTOList> listarPorId(@PathVariable Long id) {
+    public ResponseEntity<EquipmentDTOInsert> listarPorId(@PathVariable Long id) {
         Equipment equipment = eS.listById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -99,7 +105,7 @@ public class EquipmentController {
                         )
                 );
 
-        EquipmentDTOList dto = mP.map(equipment, EquipmentDTOList.class);
+        EquipmentDTOInsert dto = mP.map(equipment, EquipmentDTOInsert.class);
 
         return ResponseEntity.ok(dto);
     }
