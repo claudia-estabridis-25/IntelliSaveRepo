@@ -22,6 +22,11 @@ public class EquipmentServiceImplement implements IEquipmentService {
     }
 
     @Override
+    public List<Equipment> listByStatus(String status) {
+        return eR.findByStatusEquipment(status);
+    }
+
+    @Override
     public void insert(Equipment e) {
         eR.save(e);
     }

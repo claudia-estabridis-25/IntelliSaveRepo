@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface IEquipmentService {
     public List<Equipment> list();
+    public List<Equipment> listByStatus(String status);
     public void insert(Equipment e);
     public void update(Equipment e);
     public Optional<Equipment> listById(Long id);

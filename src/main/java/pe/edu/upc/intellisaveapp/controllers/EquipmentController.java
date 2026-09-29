@@ -115,4 +115,30 @@ public class EquipmentController {
         eS.delete(equipment.getIdEquipment());
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/status/{status}")
+    public ResponseEntity<List<EquipmentDTOList>> listarPorEstado(@PathVariable String status) {
+        List<EquipmentDTOList> lista = eS.listByStatus(status)
+                .stream()
+                .map(equipment -> mP.map(equipment, EquipmentDTOList.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    @PatchMapping("/{id}/deactivate")
+    public ResponseEntity<EquipmentDTOList> darDeBaja(@PathVariable Long id) {
+        Equipment equipment = eS.listById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe un equipo con el id: " + id
+                        )
+                );
+
+        equipment.setStatusEquipment("Inactivo");
+        eS.update(equipment);
+
+        EquipmentDTOList dto = mP.map(equipment, EquipmentDTOList.class);
+        return ResponseEntity.ok(dto);
+    }
 }
