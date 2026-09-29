@@ -7,6 +7,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import pe.edu.upc.intellisaveapp.entities.Users;
+import pe.edu.upc.intellisaveapp.repositories.IUsersRepository;
 
 import java.util.List;
 
