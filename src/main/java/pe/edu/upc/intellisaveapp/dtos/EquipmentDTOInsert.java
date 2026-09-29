@@ -2,6 +2,7 @@ package pe.edu.upc.intellisaveapp.dtos;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 import java.time.LocalDate;
 
@@ -18,6 +19,7 @@ public class EquipmentDTOInsert {
     @NotBlank(message = "El modelo del equipo es obligatorio")
     private String modelEquipment;
     @NotNull(message = "La potencia en watts del equipo es obligatoria")
+    @Positive(message = "La potencia en watts debe ser mayor a 0")
     private Double wattPowerEquipment;
     @NotNull(message = "La fecha de adquisición del equipo es obligatoria")
     private LocalDate acquisitionDateEquipment;
