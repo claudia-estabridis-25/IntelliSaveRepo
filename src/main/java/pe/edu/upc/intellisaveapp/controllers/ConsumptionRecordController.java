@@ -179,7 +179,28 @@ public class ConsumptionRecordController {
     public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorFecha(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
+
+        validarRangoFechas(desde, hasta);
+
         List<ConsumptionRecordDTOList> lista = crS.listByDateRange(desde, hasta)
+                .stream()
+                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    @GetMapping("/history")
+    public ResponseEntity<List<ConsumptionRecordDTOList>> historial(
+            @RequestParam(required = false) Long idBranch,
+            @RequestParam(required = false) Long idDepartment,
+            @RequestParam(required = false) Long idEquipment,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
+
+        validarRangoFechas(desde, hasta);
+
+        List<ConsumptionRecordDTOList> lista = crS.listHistory(idBranch, idDepartment, idEquipment, desde, hasta)
                 .stream()
                 .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
                 .toList();
@@ -239,6 +260,12 @@ public class ConsumptionRecordController {
                     "El equipo con id " + equipment.getIdEquipment()
                             + " está dado de baja y no puede registrar consumo"
             );
+        }
+    }
+
+    private void validarRangoFechas(LocalDateTime desde, LocalDateTime hasta) {
+        if (desde != null && hasta != null && desde.isAfter(hasta)) {
+            throw new BusinessRuleException("La fecha 'desde' no puede ser posterior a la fecha 'hasta'");
         }
     }
 }
