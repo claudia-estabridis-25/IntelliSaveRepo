@@ -9,13 +9,13 @@ import pe.edu.upc.intellisaveapp.dtos.BranchDTOInsert;
 import pe.edu.upc.intellisaveapp.dtos.BranchDTOList;
 import pe.edu.upc.intellisaveapp.entities.Branch;
 import pe.edu.upc.intellisaveapp.entities.Company;
+import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IBranchService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ICompanyService;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/branches")
@@ -30,7 +30,7 @@ public class BranchController {
         this.modelMapper = modelMapper;
     }
 
-    //Listar todos
+    //Listar todas las sedes
     @GetMapping
     public ResponseEntity<List<BranchDTOList>> listar() {
         List<BranchDTOList> lista = bS.list()
@@ -41,26 +41,41 @@ public class BranchController {
         return ResponseEntity.ok(lista);
     }
 
+    //Listar las sedes de una empresa (HU032)
+    @GetMapping("/company/{idCompany}")
+    public ResponseEntity<List<BranchDTOList>> listarPorEmpresa(@PathVariable Long idCompany) {
+        cS.listById(idCompany)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe la empresa con el id: " + idCompany
+                        )
+                );
+
+        List<BranchDTOList> lista = bS.listByCompany(idCompany)
+                .stream()
+                .map(branch -> modelMapper.map(branch, BranchDTOList.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
     //Registrar
     @PostMapping
     public ResponseEntity<BranchDTOInsert> registrar(@Valid @RequestBody BranchDTOInsert dto) {
-        //Validar que la empresa asociada a la sede sí exista
         Company company = cS.listById(dto.getIdCompany())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "No existe la empresa con el id: " + dto.getIdCompany()
                         )
                 );
+
         Branch b = modelMapper.map(dto, Branch.class);
+        b.setIdBranch(null); //Un POST siempre crea una sede nueva
         b.setCompany(company);
-        bS.insert(b); //registrando la sede
+        bS.insert(b);
 
         BranchDTOInsert responseDTO = modelMapper.map(b, BranchDTOInsert.class);
 
-        // El objeto location permite que, al crear una sede, el cliente pueda saber dónde se
-        // guardó o dónde quedó la nueva sede. Por ejemplo, la respuesta sería:
-        // HTTP/1.1 201 Created
-        // Location: /sucursales/15   -> 15 es el id con que se crea la sede
         URI location = ServletUriComponentsBuilder
                 .fromCurrentRequest()
                 .path("/{id}")
@@ -70,51 +85,44 @@ public class BranchController {
         return ResponseEntity.created(location).body(responseDTO);
     }
 
-    //Actualizar
+    //Actualizar (HU033)
     @PutMapping
     public ResponseEntity<BranchDTOInsert> actualizar(@Valid @RequestBody BranchDTOInsert dto) {
-        //Primero se verifica que exista la sede a actualizar
-        Optional<Branch> existente =bS.listById(dto.getIdBranch());
-
-        if (existente.isEmpty()) {
-            throw new ResourceNotFoundException(
-                    "No existe una sede con el id: " + dto.getIdBranch()
-            );
+        if (dto.getIdBranch() == null) {
+            throw new BusinessRuleException("El id de la sede es obligatorio para actualizar");
         }
 
-        //Verificando que la empresa asociada también exista
-        Optional<Company> company= cS.listById(dto.getIdCompany());
+        Branch branch = bS.listById(dto.getIdBranch())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe una sede con el id: " + dto.getIdBranch()
+                        )
+                );
 
-        if (company.isEmpty()) {
-            throw new ResourceNotFoundException(
-                    "No existe una empresa con el id: " + dto.getIdCompany()
-            );
-        }
+        Company company = cS.listById(dto.getIdCompany())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe una empresa con el id: " + dto.getIdCompany()
+                        )
+                );
 
-        //Obteniendo la sede existente que se quiere actualizar
-        Branch branch = existente.get();
-
-        //Actualizando sus campos
         branch.setNameBranch(dto.getNameBranch());
         branch.setAddressBranch(dto.getAddressBranch());
         branch.setDescriptionBranch(dto.getDescriptionBranch());
+        branch.setLatitudeBranch(dto.getLatitudeBranch());
+        branch.setLongitudeBranch(dto.getLongitudeBranch());
+        branch.setCompany(company);
 
-        //Asignando a la empresa relacionada existente
-        branch.setCompany(company.get());
-
-        //Guardando la sede actualizada
         bS.update(branch);
 
-        //Convirtiendo de nuevo a tipo DTO
         BranchDTOInsert responseDTO = modelMapper.map(branch, BranchDTOInsert.class);
 
         return ResponseEntity.ok(responseDTO);
     }
 
-    //Listar por id
+    //Detalle completo por id (HU058)
     @GetMapping("/{id}")
-    public ResponseEntity<BranchDTOList> buscarPorId(@PathVariable Long id) {
-
+    public ResponseEntity<BranchDTOInsert> buscarPorId(@PathVariable Long id) {
         Branch branch = bS.listById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -122,7 +130,7 @@ public class BranchController {
                         )
                 );
 
-        BranchDTOList dto = modelMapper.map(branch, BranchDTOList.class);
+        BranchDTOInsert dto = modelMapper.map(branch, BranchDTOInsert.class);
 
         return ResponseEntity.ok(dto);
     }
@@ -130,18 +138,15 @@ public class BranchController {
     //Eliminar por id
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
-        //Encontrando el id solicitado y validando que exista
         Branch branch = bS.listById(id)
-                .orElseThrow(() -> //Por si no lo encuentra
+                .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "No existe una sede con el id: " + id
                         )
                 );
 
-        //Si sí lo encontró, recién lo elimina
         bS.delete(branch.getIdBranch());
 
-        //No devuelve ningún cuerpo de respuesta
         return ResponseEntity.noContent().build();
     }
 }

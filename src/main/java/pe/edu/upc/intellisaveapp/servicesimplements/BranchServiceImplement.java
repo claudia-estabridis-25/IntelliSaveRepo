@@ -22,6 +22,11 @@ public class BranchServiceImplement implements IBranchService {
     }
 
     @Override
+    public List<Branch> listByCompany(Long idCompany) {
+        return bR.findByCompany_IdCompany(idCompany);
+    }
+
+    @Override
     public void insert(Branch b) {
         bR.save(b);
     }

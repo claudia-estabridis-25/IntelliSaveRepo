@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface IDepartmentService {
     public List<Department> list();
+    public List<Department> listByBranch(Long idBranch);
     public void insert(Department d);
     public void update(Department d);
     public Optional<Department> listById(Long id);
