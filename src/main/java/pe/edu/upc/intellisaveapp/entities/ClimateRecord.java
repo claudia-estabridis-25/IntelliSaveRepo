@@ -15,19 +15,19 @@ public class ClimateRecord {
     @Column(name = "climate_date_time", nullable = false)
     private LocalDateTime climateDateTime;
 
-    @Column(name = "temperature", precision = 10, scale = 2, nullable = false)
+    @Column(name = "temperature", nullable = false)
     private double temperature;
 
-    @Column(name = "humidity", precision = 10, scale = 2, nullable = false)
+    @Column(name = "humidity", nullable = false)
     private double humidity;
 
     @Column(name = "climate_condition", length = 100, nullable = false)
     private String climateCondition;
 
-    @Column(name = "wind_speed", precision = 10, scale = 2, nullable = false)
+    @Column(name = "wind_speed", nullable = false)
     private double windSpeed;
 
-    @Column(name = "thermal_sensation", precision = 10, scale = 2, nullable = false)
+    @Column(name = "thermal_sensation", nullable = false)
     private double thermalSensation;
 
     @ManyToOne
