@@ -12,7 +12,12 @@ import pe.edu.upc.intellisaveapp.entities.Equipment;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IEquipmentService;
+import pe.edu.upc.intellisaveapp.dtos.ElevatedConsumptionDTO;
+import org.springframework.format.annotation.DateTimeFormat;
 
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.net.URI;
 import java.util.List;
 
@@ -125,5 +130,81 @@ public class ConsumptionRecordController {
                 );
         crS.delete(cr.getIdConsumptionRecord());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/department/{idDepartment}")
+    public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorArea(@PathVariable Long idDepartment) {
+        List<ConsumptionRecordDTOList> lista = crS.listByDepartment(idDepartment)
+                .stream()
+                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    @GetMapping("/branch/{idBranch}")
+    public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorSede(@PathVariable Long idBranch) {
+        List<ConsumptionRecordDTOList> lista = crS.listByBranch(idBranch)
+                .stream()
+                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    @GetMapping("/equipment/{idEquipment}")
+    public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorEquipo(@PathVariable Long idEquipment) {
+        List<ConsumptionRecordDTOList> lista = crS.listByEquipment(idEquipment)
+                .stream()
+                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    @GetMapping("/range")
+    public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorFecha(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
+        List<ConsumptionRecordDTOList> lista = crS.listByDateRange(desde, hasta)
+                .stream()
+                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    @GetMapping("/department/{idDepartment}/average")
+    public ResponseEntity<Double> promedioKwhPorArea(@PathVariable Long idDepartment) {
+        return ResponseEntity.ok(crS.averageKwhByDepartment(idDepartment));
+    }
+
+    @GetMapping("/department/{idDepartment}/elevated-consumption")
+    public ResponseEntity<List<ElevatedConsumptionDTO>> equiposConsumoElevado(@PathVariable Long idDepartment) {
+        Double promedio = crS.averageKwhByDepartment(idDepartment);
+        Double umbral = promedio * 1.3;
+
+        Map<pe.edu.upc.intellisaveapp.entities.Equipment, Double> totalPorEquipo = crS.listByDepartment(idDepartment)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        ConsumptionRecord::getEquipment,
+                        Collectors.summingDouble(ConsumptionRecord::getKwhConsumption)
+                ));
+
+        List<ElevatedConsumptionDTO> resultado = totalPorEquipo.entrySet()
+                .stream()
+                .filter(entry -> entry.getValue() > umbral)
+                .map(entry -> {
+                    ElevatedConsumptionDTO dto = new ElevatedConsumptionDTO();
+                    dto.setIdEquipment(entry.getKey().getIdEquipment());
+                    dto.setNameEquipment(entry.getKey().getNameEquipment());
+                    dto.setTotalKwhConsumption(entry.getValue());
+                    dto.setDepartmentAverageKwh(promedio);
+                    dto.setElevatedConsumption(true);
+                    return dto;
+                })
+                .toList();
+
+        return ResponseEntity.ok(resultado);
     }
 }
