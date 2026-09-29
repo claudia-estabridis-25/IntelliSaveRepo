@@ -12,6 +12,8 @@ public interface IConsumptionRecordService {
     public List<ConsumptionRecord> listByBranch(Long idBranch);
     public List<ConsumptionRecord> listByEquipment(Long idEquipment);
     public List<ConsumptionRecord> listByDateRange(LocalDateTime desde, LocalDateTime hasta);
+    public List<ConsumptionRecord> listHistory(Long idBranch, Long idDepartment, Long idEquipment,
+                                               LocalDateTime desde, LocalDateTime hasta);
     public Double averageKwhByDepartment(Long idDepartment);
     public void insert(ConsumptionRecord cr);
     public void update(ConsumptionRecord cr);

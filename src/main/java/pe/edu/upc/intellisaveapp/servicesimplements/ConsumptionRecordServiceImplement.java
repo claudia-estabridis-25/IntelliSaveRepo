@@ -6,6 +6,7 @@ import pe.edu.upc.intellisaveapp.repositories.IConsumptionRecordRepository;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,6 +41,23 @@ public class ConsumptionRecordServiceImplement implements IConsumptionRecordServ
     @Override
     public List<ConsumptionRecord> listByDateRange(LocalDateTime desde, LocalDateTime hasta) {
         return crR.findByDateTimeRecordBetween(desde, hasta);
+    }
+
+    @Override
+    public List<ConsumptionRecord> listHistory(Long idBranch, Long idDepartment, Long idEquipment,
+                                               LocalDateTime desde, LocalDateTime hasta) {
+        return crR.findAll()
+                .stream()
+                .filter(cr -> idEquipment == null
+                        || cr.getEquipment().getIdEquipment().equals(idEquipment))
+                .filter(cr -> idDepartment == null
+                        || cr.getEquipment().getDepartment().getIdDepartment().equals(idDepartment))
+                .filter(cr -> idBranch == null
+                        || cr.getEquipment().getDepartment().getBranch().getIdBranch().equals(idBranch))
+                .filter(cr -> desde == null || !cr.getDateTimeRecord().isBefore(desde))
+                .filter(cr -> hasta == null || !cr.getDateTimeRecord().isAfter(hasta))
+                .sorted(Comparator.comparing(ConsumptionRecord::getDateTimeRecord).reversed())
+                .toList();
     }
 
     @Override
