@@ -16,7 +16,7 @@ public class ConsumptionPrediction { //FALTA CRUD Y QUERIES
     private Department department; //FK
 
     @ManyToOne
-    @JoinColumn(name = "idEquipment", nullable = false)
+    @JoinColumn(name = "idEquipment")   // Opcional: vacío = predicción de toda el área
     private Equipment equipment; //FK
 
     @Column(name = "generationDatePrediction", nullable = false)
@@ -44,7 +44,7 @@ public class ConsumptionPrediction { //FALTA CRUD Y QUERIES
     private double costPrediction;
 
     @Column(name = "statusPrediction", length = 20, nullable = false)
-    private String statusPrediction; //Próxima, Cumplida, Descartada
+    private String statusPrediction; //En curso, Cumplida, Errada
 
 
     public ConsumptionPrediction() {

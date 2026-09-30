@@ -1,6 +1,8 @@
 package pe.edu.upc.intellisaveapp.servicesinterfaces;
 
 import pe.edu.upc.intellisaveapp.entities.ConsumptionRecord;
+import pe.edu.upc.intellisaveapp.dtos.CategoryConsumptionDTO;
+import pe.edu.upc.intellisaveapp.dtos.DepartmentConsumptionDTO;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -14,6 +16,8 @@ public interface IConsumptionRecordService {
     public List<ConsumptionRecord> listByDateRange(LocalDateTime desde, LocalDateTime hasta);
     public List<ConsumptionRecord> listHistory(Long idBranch, Long idDepartment, Long idEquipment,
                                                LocalDateTime desde, LocalDateTime hasta);
+    public List<DepartmentConsumptionDTO> consumptionByDepartmentOfBranch(Long idBranch);
+    public List<CategoryConsumptionDTO> consumptionByEquipmentCategory(LocalDateTime desde, LocalDateTime hasta);
     public Double averageKwhByDepartment(Long idDepartment);
     public void insert(ConsumptionRecord cr);
     public void update(ConsumptionRecord cr);

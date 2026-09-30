@@ -4,6 +4,8 @@ import org.springframework.stereotype.Service;
 import pe.edu.upc.intellisaveapp.entities.ConsumptionRecord;
 import pe.edu.upc.intellisaveapp.repositories.IConsumptionRecordRepository;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
+import pe.edu.upc.intellisaveapp.dtos.CategoryConsumptionDTO;
+import pe.edu.upc.intellisaveapp.dtos.DepartmentConsumptionDTO;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -84,5 +86,37 @@ public class ConsumptionRecordServiceImplement implements IConsumptionRecordServ
     @Override
     public void delete(Long id) {
         crR.deleteById(id);
+    }
+
+    @Override
+    public List<DepartmentConsumptionDTO> consumptionByDepartmentOfBranch(Long idBranch) {
+        return crR.consumptionByDepartmentOfBranch(idBranch)
+                .stream()
+                .map(fila -> new DepartmentConsumptionDTO(
+                        ((Number) fila[0]).longValue(),       // id_department
+                        (String) fila[1],                     // name_department
+                        ((Number) fila[2]).longValue(),       // total_registros
+                        redondear(((Number) fila[3]).doubleValue()),  // total_kwh
+                        redondear(((Number) fila[4]).doubleValue())   // total_costo
+                ))
+                .toList();
+    }
+
+    @Override
+    public List<CategoryConsumptionDTO> consumptionByEquipmentCategory(LocalDateTime desde, LocalDateTime hasta) {
+        return crR.consumptionByEquipmentCategory(desde, hasta)
+                .stream()
+                .map(fila -> new CategoryConsumptionDTO(
+                        (String) fila[0],                     // category_equipment
+                        ((Number) fila[1]).longValue(),       // cantidad_equipos
+                        ((Number) fila[2]).longValue(),       // total_registros
+                        redondear(((Number) fila[3]).doubleValue()),  // total_kwh
+                        redondear(((Number) fila[4]).doubleValue())   // total_costo
+                ))
+                .toList();
+    }
+
+    private Double redondear(Double valor) {
+        return Math.round(valor * 100.0) / 100.0;
     }
 }
