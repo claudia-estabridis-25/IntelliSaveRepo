@@ -43,8 +43,8 @@ public class ConsumptionPrediction { //FALTA CRUD Y QUERIES
     @Column(name = "costPrediction", nullable = false)
     private double costPrediction;
 
-    @Column(name = "statusPrediction", nullable = false)
-    private double statusPrediction; //Próxima, Cumplida, Descartada
+    @Column(name = "statusPrediction", length = 20, nullable = false)
+    private String statusPrediction; //Próxima, Cumplida, Descartada
 
 
     public ConsumptionPrediction() {
@@ -54,7 +54,7 @@ public class ConsumptionPrediction { //FALTA CRUD Y QUERIES
                                  LocalDate generationDatePrediction, LocalDate initialDatePrediction,
                                  LocalDate endDatePrediction, double kwhPrediction, String modelAI,
                                  double confidenceLevelAI, String descriptionPrediction, double costPrediction,
-                                 double statusPrediction) {
+                                 String statusPrediction) {
         this.idPrediction = idPrediction;
         this.department = department;
         this.equipment = equipment;
@@ -145,9 +145,7 @@ public class ConsumptionPrediction { //FALTA CRUD Y QUERIES
         return descriptionPrediction;
     }
 
-    public void setDescriptionPrediction(String descriptionPrediction) {
-        this.descriptionPrediction = descriptionPrediction;
-    }
+    public void setDescriptionPrediction(String descriptionPrediction) { this.descriptionPrediction = descriptionPrediction;}
 
     public double getCostPrediction() {
         return costPrediction;
@@ -157,11 +155,7 @@ public class ConsumptionPrediction { //FALTA CRUD Y QUERIES
         this.costPrediction = costPrediction;
     }
 
-    public double getStatusPrediction() {
-        return statusPrediction;
-    }
+    public String getStatusPrediction() { return statusPrediction; }
 
-    public void setStatusPrediction(double statusPrediction) {
-        this.statusPrediction = statusPrediction;
-    }
+    public void setStatusPrediction(String statusPrediction) { this.statusPrediction = statusPrediction; }
 }
