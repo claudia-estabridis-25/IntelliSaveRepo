@@ -62,6 +62,7 @@ public class BranchController {
     //Registrar
     @PostMapping
     public ResponseEntity<BranchDTOInsert> registrar(@Valid @RequestBody BranchDTOInsert dto) {
+        //Validar que la empresa asociada a la sede sí exista
         Company company = cS.listById(dto.getIdCompany())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(

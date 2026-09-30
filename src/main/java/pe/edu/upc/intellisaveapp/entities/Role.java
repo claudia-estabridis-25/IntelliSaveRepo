@@ -14,32 +14,51 @@ import java.io.Serializable;
 public class Role implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long idRole; //PK
 
-    @Column(nullable = false, length = 30)
-    private String rol;
+    @Column(nullable = false, length = 20)
+    private String nameRole;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private Users user;
+    @Column(nullable = false, length = 60)
+    private String descriptionRole;
+
+    //Un usuario puede tener varios roles (ejem: Admin y Supervisor a la vez)
+    @ManyToOne(fetch = FetchType.LAZY) //N roles -> 1 user
+    @JoinColumn(name = "id_user", nullable = false)
+    private Users user; //FK
 
     public Role() {
     }
 
-    public Long getId() {
-        return id;
+    public Role(Long idRole, String nameRole, String descriptionRole, Users user) {
+        this.idRole = idRole;
+        this.nameRole = nameRole;
+        this.descriptionRole = descriptionRole;
+        this.user = user;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public Long getIdRole() {
+        return idRole;
     }
 
-    public String getRol() {
-        return rol;
+    public void setIdRole(Long idRole) {
+        this.idRole = idRole;
     }
 
-    public void setRol(String rol) {
-        this.rol = rol;
+    public String getNameRole() {
+        return nameRole;
+    }
+
+    public void setNameRole(String nameRole) {
+        this.nameRole = nameRole;
+    }
+
+    public String getDescriptionRole() {
+        return descriptionRole;
+    }
+
+    public void setDescriptionRole(String descriptionRole) {
+        this.descriptionRole = descriptionRole;
     }
 
     public Users getUser() {

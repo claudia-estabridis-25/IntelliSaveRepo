@@ -9,22 +9,21 @@ import java.time.LocalDateTime;
 public class ConsumptionRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idConsumptionRecord;
+    private Long idConsumptionRecord; //PK
 
     @ManyToOne
     @JoinColumn(name = "idEquipment", nullable = false)
-    private Equipment equipment;
+    private Equipment equipment; //FK
 
-
-    @Column(name = "idTariff", nullable = false)
-    private Long idTariff;
+    @ManyToOne
+    @JoinColumn(name = "idTariff", nullable = false)
+    private Tariff tariff; //FK
 
     @Column(name = "dateTimeRecord", nullable = false)
     private LocalDateTime dateTimeRecord;
 
     @Column(name = "hoursOfUse", nullable = false)
     private Double hoursOfUse;
-
 
     @Column(name = "kwhConsumption", nullable = false)
     private Double kwhConsumption;
@@ -38,12 +37,12 @@ public class ConsumptionRecord {
     public ConsumptionRecord() {
     }
 
-    public ConsumptionRecord(Long idConsumptionRecord, Equipment equipment, Long idTariff,
+    public ConsumptionRecord(Long idConsumptionRecord, Equipment equipment, Tariff tariff,
                              LocalDateTime dateTimeRecord, Double hoursOfUse, Double kwhConsumption,
                              Double costTotal, String observationRecord) {
         this.idConsumptionRecord = idConsumptionRecord;
         this.equipment = equipment;
-        this.idTariff = idTariff;
+        this.tariff = tariff;
         this.dateTimeRecord = dateTimeRecord;
         this.hoursOfUse = hoursOfUse;
         this.kwhConsumption = kwhConsumption;
@@ -67,12 +66,12 @@ public class ConsumptionRecord {
         this.equipment = equipment;
     }
 
-    public Long getIdTariff() {
-        return idTariff;
+    public Tariff getTariff() {
+        return tariff;
     }
 
-    public void setIdTariff(Long idTariff) {
-        this.idTariff = idTariff;
+    public void setTariff(Tariff tariff) {
+        this.tariff = tariff;
     }
 
     public LocalDateTime getDateTimeRecord() {
