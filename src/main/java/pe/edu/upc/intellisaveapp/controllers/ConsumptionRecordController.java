@@ -17,6 +17,8 @@ import pe.edu.upc.intellisaveapp.dtos.ElevatedConsumptionDTO;
 import org.springframework.format.annotation.DateTimeFormat;
 import pe.edu.upc.intellisaveapp.entities.Tariff;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ITariffService;
+import pe.edu.upc.intellisaveapp.dtos.CategoryConsumptionDTO;
+import pe.edu.upc.intellisaveapp.dtos.DepartmentConsumptionDTO;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -215,6 +217,23 @@ public class ConsumptionRecordController {
                 .toList();
 
         return ResponseEntity.ok(lista);
+    }
+
+    // Consulta nativa 1: consumo total por área de una sede
+    @GetMapping("/branch/{idBranch}/by-department")
+    public ResponseEntity<List<DepartmentConsumptionDTO>> consumoPorAreaDeSede(@PathVariable Long idBranch) {
+        return ResponseEntity.ok(crS.consumptionByDepartmentOfBranch(idBranch));
+    }
+
+    // Consulta nativa 2: consumo por categoría de equipo en un periodo
+    @GetMapping("/by-category")
+    public ResponseEntity<List<CategoryConsumptionDTO>> consumoPorCategoria(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
+
+        validarRangoFechas(desde, hasta);
+
+        return ResponseEntity.ok(crS.consumptionByEquipmentCategory(desde, hasta));
     }
 
     @GetMapping("/department/{idDepartment}/average")
