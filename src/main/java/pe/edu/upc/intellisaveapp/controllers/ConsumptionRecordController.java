@@ -15,6 +15,8 @@ import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IEquipmentService;
 import pe.edu.upc.intellisaveapp.dtos.ElevatedConsumptionDTO;
 import org.springframework.format.annotation.DateTimeFormat;
+import pe.edu.upc.intellisaveapp.entities.Tariff;
+import pe.edu.upc.intellisaveapp.servicesinterfaces.ITariffService;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -27,13 +29,14 @@ import java.util.List;
 public class ConsumptionRecordController {
     private final IConsumptionRecordService crS;
     private final IEquipmentService eS;
+    private final ITariffService tS;
     private final ModelMapper mP;
 
-    private static final Double PRECIO_KWH_TEMPORAL = 0.75;
-
-    public ConsumptionRecordController(IConsumptionRecordService crS, IEquipmentService eS, ModelMapper mP) {
+    public ConsumptionRecordController(IConsumptionRecordService crS, IEquipmentService eS,
+                                       ITariffService tS, ModelMapper mP) {
         this.crS = crS;
         this.eS = eS;
+        this.tS = tS;
         this.mP = mP;
     }
 
@@ -62,9 +65,12 @@ public class ConsumptionRecordController {
         cr.setIdConsumptionRecord(null); // Un POST siempre crea un registro nuevo
         cr.setEquipment(equipment);
 
+        Tariff tariff = obtenerTarifa(dto, equipment);
+        cr.setTariff(tariff);
+
         Double kwhConsumption = (equipment.getWattPowerEquipment() * dto.getHoursOfUse()) / 1000;
         cr.setKwhConsumption(kwhConsumption);
-        cr.setCostTotal(kwhConsumption * PRECIO_KWH_TEMPORAL);
+        cr.setCostTotal(kwhConsumption * tariff.getCostPerKwh());
 
         crS.insert(cr);
 
@@ -108,9 +114,12 @@ public class ConsumptionRecordController {
         cr.setIdConsumptionRecord(existente.getIdConsumptionRecord());
         cr.setEquipment(equipment);
 
+        Tariff tariff = obtenerTarifa(dto, equipment);
+        cr.setTariff(tariff);
+
         Double kwhConsumption = (equipment.getWattPowerEquipment() * dto.getHoursOfUse()) / 1000;
         cr.setKwhConsumption(kwhConsumption);
-        cr.setCostTotal(kwhConsumption * PRECIO_KWH_TEMPORAL);
+        cr.setCostTotal(kwhConsumption * tariff.getCostPerKwh());
 
         crS.update(cr);
 
@@ -267,5 +276,38 @@ public class ConsumptionRecordController {
         if (desde != null && hasta != null && desde.isAfter(hasta)) {
             throw new BusinessRuleException("La fecha 'desde' no puede ser posterior a la fecha 'hasta'");
         }
+    }
+
+    // HU09 CA02: el costo se calcula con la tarifa vigente de la sede del equipo
+    private Tariff obtenerTarifa(ConsumptionRecordDTOInsert dto, Equipment equipment) {
+        Long idBranch = equipment.getDepartment().getBranch().getIdBranch();
+        java.time.LocalDate fecha = dto.getDateTimeRecord().toLocalDate();
+
+        // Si no se envía idTariff, se busca automáticamente la tarifa vigente
+        if (dto.getIdTariff() == null) {
+            return tS.findCurrentByBranch(idBranch, fecha)
+                    .orElseThrow(() ->
+                            new BusinessRuleException(
+                                    "La sede del equipo no tiene una tarifa vigente para la fecha " + fecha
+                                            + ". Registre una tarifa antes de registrar el consumo."
+                            )
+                    );
+        }
+
+        // Si se envía idTariff, se valida que exista, sea de la sede del equipo y esté vigente
+        Tariff tariff = tS.listById(dto.getIdTariff())
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("No existe una tarifa con el id: " + dto.getIdTariff())
+                );
+
+        if (!tariff.getBranch().getIdBranch().equals(idBranch)) {
+            throw new BusinessRuleException("La tarifa indicada no pertenece a la sede del equipo");
+        }
+
+        if (fecha.isBefore(tariff.getInitialEffectiveDate()) || fecha.isAfter(tariff.getEndEffectiveDate())) {
+            throw new BusinessRuleException("La tarifa indicada no está vigente en la fecha del registro");
+        }
+
+        return tariff;
     }
 }
