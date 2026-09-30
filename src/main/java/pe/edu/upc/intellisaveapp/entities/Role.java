@@ -8,7 +8,7 @@ import java.io.Serializable;
 @Table(
         name = "roles",
         uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"user_id", "rol"})
+                @UniqueConstraint(columnNames = {"id_user", "name_role"})
         }
 )
 public class Role implements Serializable {
@@ -16,7 +16,7 @@ public class Role implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idRole; //PK
 
-    @Column(nullable = false, length = 20)
+    @Column(name = "name_role", nullable = false, length = 20)
     private String nameRole;
 
     @Column(nullable = false, length = 60)
