@@ -17,7 +17,6 @@ import pe.edu.upc.intellisaveapp.securities.JwtTokenService;
 @RequestMapping("/login")
 public class LoginController {
     private final AuthenticationManager authenticationManager;
-
     private final JwtTokenService jwtTokenService;
 
     public LoginController(

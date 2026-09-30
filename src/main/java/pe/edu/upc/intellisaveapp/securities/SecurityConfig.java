@@ -68,6 +68,10 @@ public class SecurityConfig {
                         // Login público
                         .requestMatchers("/login").permitAll()
 
+                        //Si se necesita que un endpoint sea libre (sin token):
+                        //Ejm: .requestMatchers("/api/crops/status").permitAll()
+                        //Liberamos la ruta deseada con .permitAll()
+
                         // Swagger
                         .requestMatchers(
                                 "/swagger-ui/**",
