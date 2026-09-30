@@ -9,11 +9,11 @@ import java.time.LocalDate;
 public class Equipment {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long idEquipment;
+    private Long idEquipment; //PK
 
     @ManyToOne
     @JoinColumn(name = "idDepartment", nullable = false)
-    private Department department;
+    private Department department; //FK
 
     @Column(name = "nameEquipment", length = 40, nullable = false)
     private String nameEquipment;

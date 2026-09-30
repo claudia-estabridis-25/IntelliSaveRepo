@@ -59,6 +59,7 @@ public class CompanyController {
 
     //Actualizar empresa
     @PutMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CompanyDTOInsert> actualizar(
             @Valid @RequestBody CompanyDTOInsert dto) {
         if (dto.getIdCompany() == null) {
@@ -105,6 +106,7 @@ public class CompanyController {
 
     //Eliminar empresa
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         Company company = cS.listById(id)
                 .orElseThrow(() ->
