@@ -10,8 +10,7 @@ public class ConsumptionRecordDTOInsert {
     private Long idConsumptionRecord;
     @NotNull(message = "El id del equipo relacionado es obligatorio")
     private Long idEquipment;
-    @NotNull(message = "El id de la tarifa relacionada es obligatorio")
-    private Long idTariff;
+    private Long idTariff; // Opcional: si no se envía, se usa la tarifa vigente de la sede
     @NotNull(message = "La fecha y hora del registro son obligatorias")
     private LocalDateTime dateTimeRecord;
     @NotNull(message = "Las horas de uso son obligatorias")
