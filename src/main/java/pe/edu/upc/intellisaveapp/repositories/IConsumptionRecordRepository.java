@@ -12,12 +12,16 @@ import java.util.List;
 @Repository
 public interface IConsumptionRecordRepository extends JpaRepository<ConsumptionRecord, Long> {
 
+    //Buscar consumo de equipo por cada área
     List<ConsumptionRecord> findByEquipment_Department_IdDepartment(Long idDepartment);
 
+    //Buscar
     List<ConsumptionRecord> findByEquipment_Department_Branch_IdBranch(Long idBranch);
 
+    //Buscar consumo por equipo
     List<ConsumptionRecord> findByEquipment_IdEquipment(Long idEquipment);
 
+    //Buscar consumo por intervalo de fecha
     List<ConsumptionRecord> findByDateTimeRecordBetween(LocalDateTime desde, LocalDateTime hasta);
 
     @Query("SELECT AVG(cr.kwhConsumption) FROM ConsumptionRecord cr WHERE cr.equipment.department.idDepartment = :idDepartment")
