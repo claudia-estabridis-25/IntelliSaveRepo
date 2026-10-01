@@ -161,7 +161,9 @@ public class ConsumptionRecordController {
         return ResponseEntity.ok(lista);
     }
 
+    //Buscar consumo por sede
     @GetMapping("/branch/{idBranch}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorSede(@PathVariable Long idBranch) {
         List<ConsumptionRecordDTOList> lista = crS.listByBranch(idBranch)
                 .stream()
@@ -171,7 +173,9 @@ public class ConsumptionRecordController {
         return ResponseEntity.ok(lista);
     }
 
+    //Buscar consumo por equipo
     @GetMapping("/equipment/{idEquipment}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorEquipo(@PathVariable Long idEquipment) {
         List<ConsumptionRecordDTOList> lista = crS.listByEquipment(idEquipment)
                 .stream()
@@ -181,7 +185,9 @@ public class ConsumptionRecordController {
         return ResponseEntity.ok(lista);
     }
 
+    //Buscar consumo por rango de fecha
     @GetMapping("/range")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorFecha(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
@@ -196,7 +202,9 @@ public class ConsumptionRecordController {
         return ResponseEntity.ok(lista);
     }
 
+    //Historial de consumos
     @GetMapping("/history")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ConsumptionRecordDTOList>> historial(
             @RequestParam(required = false) Long idBranch,
             @RequestParam(required = false) Long idDepartment,
@@ -215,11 +223,13 @@ public class ConsumptionRecordController {
     }
 
     @GetMapping("/department/{idDepartment}/average")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<Double> promedioKwhPorArea(@PathVariable Long idDepartment) {
         return ResponseEntity.ok(crS.averageKwhByDepartment(idDepartment));
     }
 
     @GetMapping("/department/{idDepartment}/elevated-consumption")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ElevatedConsumptionDTO>> equiposConsumoElevado(@PathVariable Long idDepartment) {
         // 1. Consumo total (kWh) de cada equipo del área
         Map<Equipment, Double> totalPorEquipo = crS.listByDepartment(idDepartment)
@@ -260,6 +270,7 @@ public class ConsumptionRecordController {
         return ResponseEntity.ok(resultado);
     }
 
+    //Métodos complementarios
     private void validarEquipoActivo(Equipment equipment) {
         if ("Inactivo".equalsIgnoreCase(equipment.getStatusEquipment())) {
             throw new BusinessRuleException(
