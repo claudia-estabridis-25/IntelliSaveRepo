@@ -26,7 +26,7 @@ public class WeatherApiResponse {
         private Double windSpeed;
 
         @JsonProperty("weather_code")
-        private Integer weatherCode;
+        private Integer weatherCode; //climateCondition
 
         public Double getTemperature() { return temperature; }
         public void setTemperature(Double temperature) { this.temperature = temperature; }
