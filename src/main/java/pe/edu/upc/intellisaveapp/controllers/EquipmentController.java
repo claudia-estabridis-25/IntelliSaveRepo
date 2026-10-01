@@ -3,6 +3,7 @@ package pe.edu.upc.intellisaveapp.controllers;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pe.edu.upc.intellisaveapp.dtos.EquipmentDTOInsert;
@@ -30,7 +31,7 @@ public class EquipmentController {
         this.mP = mP;
     }
 
-    @GetMapping
+    @GetMapping //Libre, sin token
     public ResponseEntity<List<EquipmentDTOList>> listar() {
         List<EquipmentDTOList> lista = eS.list()
                 .stream()
@@ -41,6 +42,7 @@ public class EquipmentController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<EquipmentDTOInsert> registrar(@Valid @RequestBody EquipmentDTOInsert dto) {
         Department department = dS.listById(dto.getIdDepartment())
                 .orElseThrow(() ->
@@ -66,6 +68,7 @@ public class EquipmentController {
     }
 
     @PutMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<EquipmentDTOInsert> actualizar(@Valid @RequestBody EquipmentDTOInsert dto) {
         if (dto.getIdEquipment() == null) {
             throw new BusinessRuleException("El id del equipo es obligatorio para actualizar");
@@ -96,7 +99,7 @@ public class EquipmentController {
         return ResponseEntity.ok(responseDTO);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id}") //Libre, sin token
     public ResponseEntity<EquipmentDTOInsert> listarPorId(@PathVariable Long id) {
         Equipment equipment = eS.listById(id)
                 .orElseThrow(() ->
@@ -111,6 +114,7 @@ public class EquipmentController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         Equipment equipment = eS.listById(id)
                 .orElseThrow(() ->
