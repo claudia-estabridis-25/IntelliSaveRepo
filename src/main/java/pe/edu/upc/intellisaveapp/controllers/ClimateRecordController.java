@@ -1,37 +1,42 @@
 package pe.edu.upc.intellisaveapp.controllers;
 
-import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pe.edu.upc.intellisaveapp.dtos.ClimateRecordDTO;
+import pe.edu.upc.intellisaveapp.dtos.ClimateRefreshResultDTO;
 import pe.edu.upc.intellisaveapp.entities.Branch;
 import pe.edu.upc.intellisaveapp.entities.ClimateRecord;
+import pe.edu.upc.intellisaveapp.entities.Department;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IBranchService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IClimateRecordService;
+import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/climate-records")
 public class ClimateRecordController {
     private final IClimateRecordService cS;
     private final IBranchService bS;
+    private final IDepartmentService dS;
     private final ModelMapper modelMapper;
 
-    public ClimateRecordController(IClimateRecordService cS, IBranchService bS, ModelMapper modelMapper) {
+    public ClimateRecordController(IClimateRecordService cS, IBranchService bS,
+                                   IDepartmentService dS, ModelMapper modelMapper) {
         this.cS = cS;
         this.bS = bS;
+        this.dS = dS;
         this.modelMapper = modelMapper;
     }
 
-
     //Listar todos
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ClimateRecordDTO>> list() {
         List<ClimateRecordDTO> lista = cS.list()
                 .stream()
@@ -43,121 +48,76 @@ public class ClimateRecordController {
 
     //Listar por id
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<ClimateRecordDTO> listById(@PathVariable Long id) {
         ClimateRecord c = cS.listById(id)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No existe un registro de clima con el id: " + id
-                        )
+                        new ResourceNotFoundException("No existe un registro de clima con el id: " + id)
                 );
 
-        ClimateRecordDTO dto = modelMapper.map(c, ClimateRecordDTO.class);
-
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(modelMapper.map(c, ClimateRecordDTO.class));
     }
 
-    //Listar registros de clima (o historial climático) de una sede específica
-    //Osea, por cada sede, voy a obtener sus registros climáticos (gracias a la API)
+    //HU18: historial climático de una sede (se actualiza solo si el último registro tiene más de 1 hora)
     @GetMapping("/branch/{idBranch}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ClimateRecordDTO>> listByBranch(@PathVariable Long idBranch) {
+        Branch branch = buscarSede(idBranch);
+        cS.refreshIfOutdated(branch);
 
-        //La lista implementada en IClimaRecordService es de tipo ClimateRecord, por lo que el objeto cS me trae
-        //ese tipo de dato (ClimateRecord); pero acá necesito una lista de tipo DTO, por eso se usa modelMapper, para
-        //poder convertir de tipo entidad (ClimateRecord) a tipo DTO (ClimateRecordDTO)
-
-        List<ClimateRecordDTO> lista = cS.listByBranch(idBranch)
-                .stream()
-                .map(climateRecord -> modelMapper.map(climateRecord, ClimateRecordDTO.class))
-                .toList();
-
-        return ResponseEntity.ok(lista);
+        return ResponseEntity.ok(convertir(cS.listByBranch(idBranch)));
     }
 
-    /* En la API, este metodo hace:
-        GET /api/climate-records/branch/3
-       Osea, trae solo el historial climático de la Sede (Branch) con idBranch = 3
-    */
-
-
-
-    /*
-    //Registrar
-    @PostMapping
-    public ResponseEntity<ClimateRecordDTO> register(@Valid @RequestBody ClimateRecordDTO dto) {
-        Branch branch = bS.listById(dto.getIdBranch())
+    //HU18: historial climático de un área (es el de la sede a la que pertenece el área)
+    @GetMapping("/department/{idDepartment}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<List<ClimateRecordDTO>> listByDepartment(@PathVariable Long idDepartment) {
+        Department department = dS.listById(idDepartment)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No existe la sede con el id: " + dto.getIdBranch()
-                        )
+                        new ResourceNotFoundException("No existe un área con el id: " + idDepartment)
                 );
 
+        Branch branch = department.getBranch();
+        cS.refreshIfOutdated(branch);
 
-        ClimateRecord climate = modelMapper.map(dto, ClimateRecord.class);
-        climate.setBranch(branch);
-        cS.insert(climate);
-        ClimateRecordDTO responseDTO = modelMapper.map(climate, ClimateRecordDTO.class);
+        return ResponseEntity.ok(convertir(cS.listByBranch(branch.getIdBranch())));
+    }
+
+    //HU17: consultar la API y guardar el clima actual de una sede
+    @PostMapping("/branch/{idBranch}/fetch")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ClimateRecordDTO> fetchBranch(@PathVariable Long idBranch) {
+        Branch branch = buscarSede(idBranch);
+        ClimateRecord record = cS.fetchAndSave(branch);
 
         URI location = ServletUriComponentsBuilder
-                .fromCurrentRequest()
-                .path("/{id}")
-                .buildAndExpand(climate.getIdClimate())
+                .fromCurrentContextPath()
+                .path("/api/climate-records/{id}")
+                .buildAndExpand(record.getIdClimate())
                 .toUri();
 
-        return ResponseEntity.created(location).body(responseDTO);
+        return ResponseEntity.created(location).body(modelMapper.map(record, ClimateRecordDTO.class));
     }
 
-    //Actualizar
-    @PutMapping
-    public ResponseEntity<ClimateRecordDTO> update(@Valid @RequestBody ClimateRecordDTO dto) {
-        Optional<ClimateRecord> existente = cS.listById(dto.getIdClimate());
-
-        if(existente.isEmpty()) {
-            throw new ResourceNotFoundException(
-                    "No existe un registro de clima con el id: " + dto.getIdClimate()
-            );
-        }
-
-        Optional<Branch> branch = bS.listById(dto.getIdBranch());
-        if(branch.isEmpty()) {
-            throw new ResourceNotFoundException(
-                    "No existe una sede con el id: " + dto.getIdBranch()
-            );
-        }
-
-        ClimateRecord climate = existente.get();
-
-        climate.setClimateDateTime(dto.getClimateDateTime());
-        climate.setTemperature(dto.getTemperature());
-        climate.setHumidity(dto.getHumidity());
-        climate.setClimateCondition(dto.getClimateCondition());
-        climate.setWindSpeed(dto.getWindSpeed());
-        climate.setThermalSensation(dto.getThermalSensation());
-
-        climate.setBranch(branch.get());
-
-        cS.update(climate);
-
-        ClimateRecordDTO responseDTO = modelMapper.map(climate, ClimateRecordDTO.class);
-
-        return ResponseEntity.ok(responseDTO);
+    //HU17 (T11): consultar la API para todas las sedes; si una falla, continúa con las demás
+    @PostMapping("/refresh")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<ClimateRefreshResultDTO> refreshAll() {
+        return ResponseEntity.ok(cS.refreshAllBranches());
     }
 
+    // ===================== MÉTODOS DE APOYO =====================
 
-    //Eliminar por id
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        ClimateRecord c = cS.listById(id)
+    private Branch buscarSede(Long idBranch) {
+        return bS.listById(idBranch)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No existe un registro de clima con el id: " + id
-                        )
+                        new ResourceNotFoundException("No existe la sede con el id: " + idBranch)
                 );
-
-        cS.delete(c.getIdClimate());
-
-        return ResponseEntity.noContent().build();
     }
-    */
 
-
+    private List<ClimateRecordDTO> convertir(List<ClimateRecord> registros) {
+        return registros.stream()
+                .map(climateRecord -> modelMapper.map(climateRecord, ClimateRecordDTO.class))
+                .toList();
+    }
 }
