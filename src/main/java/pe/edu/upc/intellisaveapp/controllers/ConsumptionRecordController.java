@@ -3,6 +3,7 @@ package pe.edu.upc.intellisaveapp.controllers;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pe.edu.upc.intellisaveapp.dtos.ConsumptionRecordDTOInsert;
@@ -37,7 +38,7 @@ public class ConsumptionRecordController {
         this.mP = mP;
     }
 
-    @GetMapping
+    @GetMapping //Libre, sin token
     public ResponseEntity<List<ConsumptionRecordDTOList>> listar() {
         List<ConsumptionRecordDTOList> lista = crS.list()
                 .stream()
@@ -48,6 +49,7 @@ public class ConsumptionRecordController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ConsumptionRecordDTOList> registrar(@Valid @RequestBody ConsumptionRecordDTOInsert dto) {
         Equipment equipment = eS.listById(dto.getIdEquipment())
                 .orElseThrow(() ->
@@ -80,6 +82,7 @@ public class ConsumptionRecordController {
     }
 
     @PutMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ConsumptionRecordDTOList> actualizar(@Valid @RequestBody ConsumptionRecordDTOInsert dto) {
         if (dto.getIdConsumptionRecord() == null) {
             throw new BusinessRuleException("El id del registro de consumo es obligatorio para actualizar");
@@ -119,7 +122,7 @@ public class ConsumptionRecordController {
         return ResponseEntity.ok(responseDTO);
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id}") //Libre, sin token
     public ResponseEntity<ConsumptionRecordDTOList> listarPorId(@PathVariable Long id) {
         ConsumptionRecord cr = crS.listById(id)
                 .orElseThrow(() ->
@@ -134,6 +137,7 @@ public class ConsumptionRecordController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         ConsumptionRecord cr = crS.listById(id)
                 .orElseThrow(() ->
@@ -145,7 +149,9 @@ public class ConsumptionRecordController {
         return ResponseEntity.noContent().build();
     }
 
+    //Listar consumo por área
     @GetMapping("/department/{idDepartment}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorArea(@PathVariable Long idDepartment) {
         List<ConsumptionRecordDTOList> lista = crS.listByDepartment(idDepartment)
                 .stream()
