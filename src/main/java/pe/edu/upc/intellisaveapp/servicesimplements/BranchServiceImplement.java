@@ -51,4 +51,19 @@ public class BranchServiceImplement implements IBranchService {
     public List<Object[]> structureByBranch() {
         return bR.structureByBranch();
     }
+
+    @Override
+    public List<Object[]> equipmentStatusByDepartment() {
+        return bR.equipmentStatusByDepartment();
+    }
+
+    @Override
+    public List<Object[]> consumptionByBranchOfCompany(Long idCompany) {
+        return bR.consumptionByBranchOfCompany(idCompany);
+    }
+
+    @Override
+    public List<Object[]> installedPowerByBranch() {
+        return bR.installedPowerByBranch();
+    }
 }

@@ -45,4 +45,9 @@ public class DepartmentServiceImplement implements IDepartmentService {
     public void delete(Long id) {
         dR.deleteById(id);
     }
+
+    @Override
+    public List<Department> searchByName(String name) {
+        return dR.findByNameDepartmentContainingIgnoreCase(name);
+    }
 }

@@ -12,4 +12,5 @@ public interface IDepartmentService {
     public void update(Department d);
     public Optional<Department> listById(Long id);
     public void delete(Long id);
+    public List<Department> searchByName(String name); //buscar áreas por su nombre
 }

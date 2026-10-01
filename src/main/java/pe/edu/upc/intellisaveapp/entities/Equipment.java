@@ -34,7 +34,7 @@ public class Equipment {
     private LocalDate acquisitionDateEquipment;
 
     @Column(name = "statusEquipment", length = 20, nullable = false)
-    private String statusEquipment;
+    private String statusEquipment; //Activo, Inactivo
 
     public Equipment() {
     }
