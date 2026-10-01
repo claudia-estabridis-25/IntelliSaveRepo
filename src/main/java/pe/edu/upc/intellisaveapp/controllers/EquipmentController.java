@@ -127,6 +127,7 @@ public class EquipmentController {
     }
 
     @GetMapping("/status/{status}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<EquipmentDTOList>> listarPorEstado(@PathVariable String status) {
         List<EquipmentDTOList> lista = eS.listByStatus(status)
                 .stream()
@@ -136,7 +137,9 @@ public class EquipmentController {
         return ResponseEntity.ok(lista);
     }
 
+    //Cambiar status de un equipo (para desactivarlo)
     @PatchMapping("/{id}/deactivate")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<EquipmentDTOList> darDeBaja(@PathVariable Long id) {
         Equipment equipment = eS.listById(id)
                 .orElseThrow(() ->
