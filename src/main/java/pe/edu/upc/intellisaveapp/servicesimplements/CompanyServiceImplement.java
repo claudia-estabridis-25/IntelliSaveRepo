@@ -41,4 +41,19 @@ public class CompanyServiceImplement implements ICompanyService {
     public void delete(Long id) {
         cR.deleteById(id);
     }
+
+    @Override
+    public List<Object[]> countCompaniesBySector() {
+        return cR.countCompaniesBySector();
+    }
+
+    @Override
+    public List<Company> findByRucCompany(String rucCompany) {
+        return cR.findByRucCompany(rucCompany);
+    }
+
+    @Override
+    public List<Object[]> structureByCompany() {
+        return cR.structureByCompany();
+    }
 }

@@ -11,22 +11,28 @@ public class BranchDTOInsert {
     @NotBlank(message = "El nombre de la sede es obligatorio")
     @Size(max = 30, message = "El nombre de la sede no puede superar 30 caracteres")
     private String nameBranch;
+
     @NotBlank(message = "La dirección de la sede es obligatoria")
     @Size(max = 60, message = "La dirección de la sede no puede superar 60 caracteres")
     private String addressBranch;
+
     @NotBlank(message = "La descripción de la sede es obligatoria")
     @Size(max = 90, message = "La descripción de la sede no puede superar 90 caracteres")
     private String descriptionBranch;
+
     @NotNull(message = "La latitud de la sede es obligatoria")
     @DecimalMin(value = "-90", message = "La latitud debe estar entre -90 y 90")
     @DecimalMax(value = "90", message = "La latitud debe estar entre -90 y 90")
     private Double latitudeBranch;
+
     @NotNull(message = "La longitud de la sede es obligatoria")
     @DecimalMin(value = "-180", message = "La longitud debe estar entre -180 y 180")
     @DecimalMax(value = "180", message = "La longitud debe estar entre -180 y 180")
     private Double longitudeBranch;
+
     @NotNull(message = "El id de la empresa relacionada es obligatorio")
     private Long idCompany;
+
 
     public Long getIdBranch() {
         return idBranch;
