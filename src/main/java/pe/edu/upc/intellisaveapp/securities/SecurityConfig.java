@@ -96,6 +96,11 @@ public class SecurityConfig {
                         //Listar todos los consumos por ID
                         .requestMatchers("/api/consumption-records/{id}").permitAll()
 
+                        //Listar todos los equipos
+                        .requestMatchers("/api/equipments").permitAll()
+
+                        //Listar equipos por ID
+                        .requestMatchers("/api/equipments/{id}").permitAll()
 
 
                         // Swagger
