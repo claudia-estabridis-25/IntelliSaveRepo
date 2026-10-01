@@ -3,10 +3,12 @@ package pe.edu.upc.intellisaveapp.controllers;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pe.edu.upc.intellisaveapp.dtos.BranchDTOInsert;
 import pe.edu.upc.intellisaveapp.dtos.BranchDTOList;
+import pe.edu.upc.intellisaveapp.dtos.BranchStructureDTO;
 import pe.edu.upc.intellisaveapp.entities.Branch;
 import pe.edu.upc.intellisaveapp.entities.Company;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
@@ -61,7 +63,10 @@ public class BranchController {
 
     //Registrar
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BranchDTOInsert> registrar(@Valid @RequestBody BranchDTOInsert dto) {
+        validarCoordenadas(dto);
+
         //Validar que la empresa asociada a la sede sí exista
         Company company = cS.listById(dto.getIdCompany())
                 .orElseThrow(() ->
@@ -88,10 +93,12 @@ public class BranchController {
 
     //Actualizar (HU033)
     @PutMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BranchDTOInsert> actualizar(@Valid @RequestBody BranchDTOInsert dto) {
         if (dto.getIdBranch() == null) {
             throw new BusinessRuleException("El id de la sede es obligatorio para actualizar");
         }
+        validarCoordenadas(dto);
 
         Branch branch = bS.listById(dto.getIdBranch())
                 .orElseThrow(() ->
@@ -121,7 +128,7 @@ public class BranchController {
         return ResponseEntity.ok(responseDTO);
     }
 
-    //Detalle completo por id (HU058)
+    //Listar sede por id (HU058)
     @GetMapping("/{id}")
     public ResponseEntity<BranchDTOInsert> buscarPorId(@PathVariable Long id) {
         Branch branch = bS.listById(id)
@@ -138,6 +145,7 @@ public class BranchController {
 
     //Eliminar por id
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
         Branch branch = bS.listById(id)
                 .orElseThrow(() ->
@@ -149,5 +157,33 @@ public class BranchController {
         bS.delete(branch.getIdBranch());
 
         return ResponseEntity.noContent().build();
+    }
+
+    //Consulta con JOIN 2: Listar cantidad de áreas y de equipos por sede
+    @GetMapping("/structure")
+    public ResponseEntity<List<BranchStructureDTO>> estructuraPorSede() {
+        //Convirtiendo
+        //Ejemplo de arreglo devuelto: [1, "Sede Lima", 9, 86]
+        List<BranchStructureDTO> lista = bS.structureByBranch()
+                .stream()
+                .map(fila -> new BranchStructureDTO(
+                        ((Number) fila[0]).longValue(), //idBranch
+                        (String) fila[1], //nameBranch
+                        ((Number) fila[2]).longValue(), //totalDepartments
+                        ((Number) fila[3]).longValue() //totalEquipments
+                ))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+
+    //Regla de negocio: (0, 0) no es una ubicación válida para una sede
+    private void validarCoordenadas(BranchDTOInsert dto) {
+        if (dto.getLatitudeBranch() == 0 && dto.getLongitudeBranch() == 0) {
+            throw new BusinessRuleException(
+                    "Las coordenadas (0, 0) no son válidas: indique la latitud y la longitud reales de la sede"
+            );
+        }
     }
 }

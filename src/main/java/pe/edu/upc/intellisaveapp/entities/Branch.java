@@ -18,10 +18,10 @@ public class Branch {
     @Column(name = "description_branch", length = 90, nullable = false)
     private String descriptionBranch;
 
-    @Column(name = "latitudeBranch", nullable = true)
+    @Column(name = "latitudeBranch", nullable = false)
     private double latitudeBranch;
 
-    @Column(name = "longitudeBranch", nullable = true)
+    @Column(name = "longitudeBranch", nullable = false)
     private double longitudeBranch;
 
     @ManyToOne

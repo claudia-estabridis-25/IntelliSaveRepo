@@ -2,6 +2,7 @@ package pe.edu.upc.intellisaveapp.dtos;
 
 public class CompanyDTOList {
     private Long idCompany;
+    private String rucCompany;
     private String comercialNamecompany;
     private String addressCompany;
     private String emailCompany;
@@ -12,6 +13,14 @@ public class CompanyDTOList {
 
     public void setIdCompany(Long idCompany) {
         this.idCompany = idCompany;
+    }
+
+    public String getRucCompany() {
+        return rucCompany;
+    }
+
+    public void setRucCompany(String rucCompany) {
+        this.rucCompany = rucCompany;
     }
 
     public String getComercialNamecompany() {
