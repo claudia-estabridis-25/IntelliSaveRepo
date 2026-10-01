@@ -1,6 +1,7 @@
 package pe.edu.upc.intellisaveapp.servicesimplements;
 
 import org.springframework.stereotype.Service;
+import pe.edu.upc.intellisaveapp.dtos.BranchStructureDTO;
 import pe.edu.upc.intellisaveapp.entities.Branch;
 import pe.edu.upc.intellisaveapp.repositories.IBranchRepository;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IBranchService;
@@ -44,5 +45,25 @@ public class BranchServiceImplement implements IBranchService {
     @Override
     public void delete(Long id) {
         bR.deleteById(id);
+    }
+
+    @Override
+    public List<Object[]> structureByBranch() {
+        return bR.structureByBranch();
+    }
+
+    @Override
+    public List<Object[]> equipmentStatusByDepartment() {
+        return bR.equipmentStatusByDepartment();
+    }
+
+    @Override
+    public List<Object[]> consumptionByBranchOfCompany(Long idCompany) {
+        return bR.consumptionByBranchOfCompany(idCompany);
+    }
+
+    @Override
+    public List<Object[]> installedPowerByBranch() {
+        return bR.installedPowerByBranch();
     }
 }

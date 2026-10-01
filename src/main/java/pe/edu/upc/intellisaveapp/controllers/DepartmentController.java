@@ -3,8 +3,10 @@ package pe.edu.upc.intellisaveapp.controllers;
 import jakarta.validation.Valid;
 import org.modelmapper.ModelMapper;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import pe.edu.upc.intellisaveapp.dtos.BranchPowerDTO;
 import pe.edu.upc.intellisaveapp.dtos.DepartmentDTO;
 import pe.edu.upc.intellisaveapp.entities.Branch;
 import pe.edu.upc.intellisaveapp.entities.Department;
@@ -31,6 +33,7 @@ public class DepartmentController {
 
     //Registrar
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DepartmentDTO> register(@Valid @RequestBody DepartmentDTO dto) {
         Branch branch = bS.listById(dto.getIdBranch())
                 .orElseThrow(() ->
@@ -56,7 +59,7 @@ public class DepartmentController {
     }
 
     //Listar todas las áreas
-    @GetMapping
+    @GetMapping //Libre, sin token
     public ResponseEntity<List<DepartmentDTO>> list() {
         List<DepartmentDTO> lista = dS.list()
                 .stream()
@@ -68,6 +71,7 @@ public class DepartmentController {
 
     //Listar las áreas de una sede (HU022)
     @GetMapping("/branch/{idBranch}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR', 'EMPLOYEE')")
     public ResponseEntity<List<DepartmentDTO>> listByBranch(@PathVariable Long idBranch) {
         bS.listById(idBranch)
                 .orElseThrow(() ->
@@ -86,6 +90,7 @@ public class DepartmentController {
 
     //Actualizar
     @PutMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DepartmentDTO> update(@Valid @RequestBody DepartmentDTO dto) {
         if (dto.getIdDepartment() == null) {
             throw new BusinessRuleException("El id del área es obligatorio para actualizar");
@@ -118,7 +123,7 @@ public class DepartmentController {
     }
 
     //Listar por id
-    @GetMapping("/{id}")
+    @GetMapping("/{id}") //Libre, sin token
     public ResponseEntity<DepartmentDTO> listById(@PathVariable Long id) {
         Department dep = dS.listById(id)
                 .orElseThrow(() ->
@@ -134,6 +139,7 @@ public class DepartmentController {
 
     //Eliminar por id
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         Department dep = dS.listById(id)
                 .orElseThrow(() ->
@@ -146,4 +152,22 @@ public class DepartmentController {
 
         return ResponseEntity.noContent().build();
     }
+
+    // Consulta simple 4: Buscar áreas por su nombre
+    @GetMapping("/search-by-name")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
+    public ResponseEntity<List<DepartmentDTO>> buscarPorNombre(@RequestParam String name) {
+        if (name.isBlank()) {
+            throw new BusinessRuleException("Indique el nombre del área a buscar");
+        }
+
+        //Convirtiendo de tipo entidad (Department) a tipo DTO (DepartmentDTO)
+        List<DepartmentDTO> lista = dS.searchByName(name.trim())
+                .stream()
+                .map(department -> modelMapper.map(department, DepartmentDTO.class))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
 }

@@ -72,6 +72,24 @@ public class SecurityConfig {
                         //Ejm: .requestMatchers("/api/crops/status").permitAll()
                         //Liberamos la ruta deseada con .permitAll()
 
+                        //Listar todas las empresas
+                        .requestMatchers("/api/companies").permitAll()
+
+                        //Listar empresa por ID
+                        .requestMatchers("/api/companies/{id}").permitAll()
+
+                        //Listar todas las sedes
+                        .requestMatchers("/api/branches").permitAll()
+
+                        //Listar sede por ID
+                        .requestMatchers("/api/branches/{id}").permitAll()
+
+                        //Listar todas las áreas
+                        .requestMatchers("/api/departments").permitAll()
+
+                        //Listar áreas por ID
+                        .requestMatchers("/api/departments/{id}").permitAll()
+
                         // Swagger
                         .requestMatchers(
                                 "/swagger-ui/**",
