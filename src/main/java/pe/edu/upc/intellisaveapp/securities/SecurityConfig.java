@@ -90,6 +90,14 @@ public class SecurityConfig {
                         //Listar áreas por ID
                         .requestMatchers("/api/departments/{id}").permitAll()
 
+                        //Listar todos los consumos
+                        .requestMatchers("/api/consumption-records").permitAll()
+
+                        //Listar todos los consumos por ID
+                        .requestMatchers("/api/consumption-records/{id}").permitAll()
+
+
+
                         // Swagger
                         .requestMatchers(
                                 "/swagger-ui/**",
