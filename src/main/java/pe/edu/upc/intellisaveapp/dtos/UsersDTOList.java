@@ -5,12 +5,12 @@ import java.util.List;
 public class UsersDTOList {
     private Long idUser;
     private String emailUser;
+    private String positionUser;
     private String dniUser;
     private String firstName;
     private String secondName;
     private String paternalSurname;
     private String maternalSurname;
-    private String positionUser;
     private String telephoneUser;
     private Boolean statusUser;
     private Long idDepartment;
@@ -57,20 +57,20 @@ public class UsersDTOList {
         this.secondName = secondName;
     }
 
-    public String getPaternalSurname() {
-        return paternalSurname;
-    }
-
-    public void setPaternalSurname(String paternalSurname) {
-        this.paternalSurname = paternalSurname;
-    }
-
     public String getMaternalSurname() {
         return maternalSurname;
     }
 
     public void setMaternalSurname(String maternalSurname) {
         this.maternalSurname = maternalSurname;
+    }
+
+    public String getPaternalSurname() {
+        return paternalSurname;
+    }
+
+    public void setPaternalSurname(String paternalSurname) {
+        this.paternalSurname = paternalSurname;
     }
 
     public String getPositionUser() {

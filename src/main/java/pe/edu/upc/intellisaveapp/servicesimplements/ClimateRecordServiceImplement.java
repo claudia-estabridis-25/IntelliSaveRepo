@@ -127,7 +127,7 @@ public class ClimateRecordServiceImplement implements IClimateRecordService {
         return new ClimateRefreshResultDTO(sedes.size(), guardados, errores);
     }
 
-    // T07: traduce el weather_code numérico (WMO) de la API a texto
+    // T07: traduce el weather_code numérico (WMO) de la API a texto (para el atributo climateCondition)
     private String translateWeatherCode(Integer code) {
         if (code == null) {
             return "Sin información";
