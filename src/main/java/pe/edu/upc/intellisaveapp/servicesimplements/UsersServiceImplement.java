@@ -5,6 +5,8 @@ import pe.edu.upc.intellisaveapp.entities.Users;
 import pe.edu.upc.intellisaveapp.repositories.IRoleRepository;
 import pe.edu.upc.intellisaveapp.repositories.IUsersRepository;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IUsersService;
+import pe.edu.upc.intellisaveapp.dtos.DepartmentUserCountDTO;
+import pe.edu.upc.intellisaveapp.dtos.RoleUserCountDTO;
 
 import java.util.List;
 import java.util.Map;
@@ -72,6 +74,33 @@ public class UsersServiceImplement implements IUsersService {
         return rR.findByUser_IdUser(idUser)
                 .stream()
                 .map(Role::getNameRole)
+                .toList();
+    }
+
+    @Override
+    public List<RoleUserCountDTO> countByRole() {
+        return uR.countUsersByRole()
+                .stream()
+                .map(fila -> new RoleUserCountDTO(
+                        (String) fila[0],                  // name_role
+                        ((Number) fila[1]).longValue(),    // total_usuarios
+                        ((Number) fila[2]).longValue(),    // usuarios_activos
+                        ((Number) fila[3]).longValue()     // usuarios_inactivos
+                ))
+                .toList();
+    }
+
+    @Override
+    public List<DepartmentUserCountDTO> countByDepartment() {
+        return uR.countUsersByDepartment()
+                .stream()
+                .map(fila -> new DepartmentUserCountDTO(
+                        ((Number) fila[0]).longValue(),    // id_branch
+                        (String) fila[1],                  // name_branch
+                        ((Number) fila[2]).longValue(),    // id_department
+                        (String) fila[3],                  // name_department
+                        ((Number) fila[4]).longValue()     // total_usuarios
+                ))
                 .toList();
     }
 

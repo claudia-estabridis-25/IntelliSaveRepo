@@ -1,6 +1,8 @@
 package pe.edu.upc.intellisaveapp.servicesinterfaces;
 
 import pe.edu.upc.intellisaveapp.entities.Users;
+import pe.edu.upc.intellisaveapp.dtos.DepartmentUserCountDTO;
+import pe.edu.upc.intellisaveapp.dtos.RoleUserCountDTO;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,4 +16,6 @@ public interface IUsersService {
     public Users update(Users user);
     public void replaceRoles(Users user, List<String> roles);
     public List<String> rolesOf(Long idUser);
+    public List<RoleUserCountDTO> countByRole();
+    public List<DepartmentUserCountDTO> countByDepartment();
 }

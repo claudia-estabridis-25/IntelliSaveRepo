@@ -17,6 +17,8 @@ import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.servicesimplements.UsersServiceImplement;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IUsersService;
+import pe.edu.upc.intellisaveapp.dtos.DepartmentUserCountDTO;
+import pe.edu.upc.intellisaveapp.dtos.RoleUserCountDTO;
 
 import java.net.URI;
 import java.util.List;
@@ -69,6 +71,20 @@ public class UsersController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UsersDTOList> listarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(toDTO(buscarUsuario(id)));
+    }
+
+    // Consulta con JOIN 1: cantidad de usuarios por rol
+    @GetMapping("/count-by-role")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<RoleUserCountDTO>> usuariosPorRol() {
+        return ResponseEntity.ok(uS.countByRole());
+    }
+
+    // Consulta con JOIN 2: cantidad de usuarios por cada área de cada sede
+    @GetMapping("/by-department")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<DepartmentUserCountDTO>> usuariosPorArea() {
+        return ResponseEntity.ok(uS.countByDepartment());
     }
 
     // HU026: actualizar usuario (datos, área, contraseña y roles)
