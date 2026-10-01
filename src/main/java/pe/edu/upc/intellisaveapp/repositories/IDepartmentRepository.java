@@ -9,4 +9,7 @@ import java.util.List;
 @Repository
 public interface IDepartmentRepository extends JpaRepository<Department, Long> {
     List<Department> findByBranch_IdBranch(Long idBranch);
+
+    // Consulta simple 4: Buscar áreas por nombre (parcial, sin distinguir mayúsculas)
+    List<Department> findByNameDepartmentContainingIgnoreCase(String nameDepartment);
 }

@@ -30,7 +30,7 @@ public class CompanyController {
     }
 
     //Listar empresas
-    @GetMapping
+    @GetMapping //Libre, sin token
     public ResponseEntity<List<CompanyDTOList>> listar(){
         List<CompanyDTOList> lista = cS.list()
                 .stream()
@@ -91,7 +91,7 @@ public class CompanyController {
     }
 
     //Listar empresa por su ID
-    @GetMapping("/{id}")
+    @GetMapping("/{id}") //Libre, sin token
     public ResponseEntity<CompanyDTOList> listarPorId(@PathVariable Long id) {
         Company company = cS.listById(id)
                 .orElseThrow(() ->
@@ -123,6 +123,7 @@ public class CompanyController {
 
     //Consulta simple 1: Listar cantidad de empresas por sector
     @GetMapping("/count-by-sector")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<SectorCountDTO>> listarEmpresasPorSector() {
 
         // Convirtiendo la lista devuelta, que es de tipo List<Object[]>, osea devuelve una lista de arreglos,
@@ -142,6 +143,7 @@ public class CompanyController {
 
     //Consulta simple 2: Buscar empresas por RUC
     @GetMapping("/ruc/{ruc}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<CompanyDTOList>> buscarPorRuc(@PathVariable String ruc) {
 
         //Validando el ruc
@@ -165,6 +167,7 @@ public class CompanyController {
 
     //Consulta con JOIN 1: Listar cantidad de sedes y áreas por empresa
     @GetMapping("/structure")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<CompanyStructureDTO>> estructuraPorEmpresa() {
 
         //Convirtiendo de tipo List<Object[]> a tipo List<CompanyStructureDTO>
