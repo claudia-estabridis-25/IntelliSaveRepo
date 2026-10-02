@@ -6,7 +6,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "tariffs")
-public class Tariff { //FALTA CRUD Y QUERIES
+public class Tariff {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idTariff; //PK

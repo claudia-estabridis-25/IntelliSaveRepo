@@ -6,7 +6,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "predictions")
-public class ConsumptionPrediction { //FALTA CRUD Y QUERIES
+public class ConsumptionPrediction {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idPrediction; //PK

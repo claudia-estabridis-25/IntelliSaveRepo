@@ -59,7 +59,7 @@ public class DepartmentController {
     }
 
     //Listar todas las áreas
-    @GetMapping //Libre, sin token
+    @GetMapping //Cualquier usuario autenticado
     public ResponseEntity<List<DepartmentDTO>> list() {
         List<DepartmentDTO> lista = dS.list()
                 .stream()
@@ -123,7 +123,7 @@ public class DepartmentController {
     }
 
     //Listar por id
-    @GetMapping("/{id}") //Libre, sin token
+    @GetMapping("/{id}") //Cualquier usuario autenticado
     public ResponseEntity<DepartmentDTO> listById(@PathVariable Long id) {
         Department dep = dS.listById(id)
                 .orElseThrow(() ->

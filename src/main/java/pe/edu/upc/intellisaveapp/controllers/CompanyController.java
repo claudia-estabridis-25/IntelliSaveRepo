@@ -30,7 +30,7 @@ public class CompanyController {
     }
 
     //Listar empresas
-    @GetMapping //Libre, sin token
+    @GetMapping //Cualquier usuario autenticado
     public ResponseEntity<List<CompanyDTOList>> listar(){
         List<CompanyDTOList> lista = cS.list()
                 .stream()
@@ -91,7 +91,7 @@ public class CompanyController {
     }
 
     //Listar empresa por su ID
-    @GetMapping("/{id}") //Libre, sin token
+    @GetMapping("/{id}") //Cualquier usuario autenticado
     public ResponseEntity<CompanyDTOList> listarPorId(@PathVariable Long id) {
         Company company = cS.listById(id)
                 .orElseThrow(() ->

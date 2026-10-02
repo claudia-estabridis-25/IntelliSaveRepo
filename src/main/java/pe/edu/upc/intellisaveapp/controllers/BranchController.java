@@ -31,7 +31,7 @@ public class BranchController {
     }
 
     //Listar todas las sedes
-    @GetMapping //Libre, sin token
+    @GetMapping //Cualquier usuario autenticado
     public ResponseEntity<List<BranchDTOList>> listar() {
         List<BranchDTOList> lista = bS.list()
                 .stream()
@@ -128,7 +128,7 @@ public class BranchController {
     }
 
     //Listar sede por id (HU058)
-    @GetMapping("/{id}") //Libre, sin token
+    @GetMapping("/{id}") //Cualquier usuario autenticado
     public ResponseEntity<BranchDTOInsert> buscarPorId(@PathVariable Long id) {
         Branch branch = bS.listById(id)
                 .orElseThrow(() ->
