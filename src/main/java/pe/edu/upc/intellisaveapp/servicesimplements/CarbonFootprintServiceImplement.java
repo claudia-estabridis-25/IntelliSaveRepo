@@ -190,13 +190,18 @@ public class CarbonFootprintServiceImplement implements ICarbonFootprintService 
     }
 
     // Primer día del periodo: ejm. Mensual con fecha 2026-10-15 -> 2026-09-16
+    // Si la fecha de cálculo es fin de mes, el periodo empieza el día 1: ejm. 2026-09-30 -> 2026-09-01
     @Override
     public LocalDate periodStart(String timePeriod, LocalDate calculationDate) {
         if (timePeriod == null || calculationDate == null) {
             return null;
         }
         Integer meses = PERIODOS.get(normalizarPeriodo(timePeriod));
-        return calculationDate.minusMonths(meses).plusDays(1);
+        LocalDate inicio = calculationDate.minusMonths(meses).plusDays(1);
+        if (calculationDate.getDayOfMonth() == calculationDate.lengthOfMonth()) {
+            inicio = calculationDate.withDayOfMonth(1).minusMonths(meses - 1);
+        }
+        return inicio;
     }
 
     // ===================== HU050: COMPARAR PERIODOS =====================

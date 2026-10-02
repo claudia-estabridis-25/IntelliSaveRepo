@@ -31,7 +31,7 @@ public class EquipmentController {
         this.mP = mP;
     }
 
-    @GetMapping //Libre, sin token
+    @GetMapping //Cualquier usuario autenticado
     public ResponseEntity<List<EquipmentDTOList>> listar() {
         List<EquipmentDTOList> lista = eS.list()
                 .stream()
@@ -99,7 +99,7 @@ public class EquipmentController {
         return ResponseEntity.ok(responseDTO);
     }
 
-    @GetMapping("/{id}") //Libre, sin token
+    @GetMapping("/{id}") //Cualquier usuario autenticado
     public ResponseEntity<EquipmentDTOInsert> listarPorId(@PathVariable Long id) {
         Equipment equipment = eS.listById(id)
                 .orElseThrow(() ->
