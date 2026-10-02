@@ -68,40 +68,8 @@ public class SecurityConfig {
                         // Login público
                         .requestMatchers("/login").permitAll()
 
-                        //Si se necesita que un endpoint sea libre (sin token):
-                        //Ejm: .requestMatchers("/api/crops/status").permitAll()
-                        //Liberamos la ruta deseada con .permitAll()
-
-                        //Listar todas las empresas
-                        .requestMatchers("/api/companies").permitAll()
-
-                        //Listar empresa por ID
-                        .requestMatchers("/api/companies/{id}").permitAll()
-
-                        //Listar todas las sedes
-                        .requestMatchers("/api/branches").permitAll()
-
-                        //Listar sede por ID
-                        .requestMatchers("/api/branches/{id}").permitAll()
-
-                        //Listar todas las áreas
-                        .requestMatchers("/api/departments").permitAll()
-
-                        //Listar áreas por ID
-                        .requestMatchers("/api/departments/{id}").permitAll()
-
-                        //Listar todos los consumos
-                        .requestMatchers("/api/consumption-records").permitAll()
-
-                        //Listar todos los consumos por ID
-                        .requestMatchers("/api/consumption-records/{id}").permitAll()
-
-                        //Listar todos los equipos
-                        .requestMatchers("/api/equipments").permitAll()
-
-                        //Listar equipos por ID
-                        .requestMatchers("/api/equipments/{id}").permitAll()
-
+                        // Los listados y detalles ya no son públicos: requieren token (cualquier rol).
+                        // Las acciones con privilegios elevados se validan con @PreAuthorize en cada controller.
 
                         // Swagger
                         .requestMatchers(

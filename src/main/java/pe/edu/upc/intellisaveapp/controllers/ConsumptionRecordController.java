@@ -20,6 +20,11 @@ import pe.edu.upc.intellisaveapp.entities.Tariff;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ITariffService;
 import pe.edu.upc.intellisaveapp.dtos.CategoryConsumptionDTO;
 import pe.edu.upc.intellisaveapp.dtos.DepartmentConsumptionDTO;
+import pe.edu.upc.intellisaveapp.entities.Users;
+import pe.edu.upc.intellisaveapp.servicesinterfaces.IUsersService;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -33,17 +38,19 @@ public class ConsumptionRecordController {
     private final IConsumptionRecordService crS;
     private final IEquipmentService eS;
     private final ITariffService tS;
+    private final IUsersService uS;
     private final ModelMapper mP;
 
     public ConsumptionRecordController(IConsumptionRecordService crS, IEquipmentService eS,
-                                       ITariffService tS, ModelMapper mP) {
+                                       ITariffService tS, IUsersService uS, ModelMapper mP) {
         this.crS = crS;
         this.eS = eS;
         this.tS = tS;
+        this.uS = uS;
         this.mP = mP;
     }
 
-    @GetMapping //Libre, sin token
+    @GetMapping //Cualquier usuario autenticado
     public ResponseEntity<List<ConsumptionRecordDTOList>> listar() {
         List<ConsumptionRecordDTOList> lista = crS.list()
                 .stream()
@@ -53,8 +60,9 @@ public class ConsumptionRecordController {
         return ResponseEntity.ok(lista);
     }
 
+    // HU09 (supervisor) y HU10 (empleado): registrar consumo
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<ConsumptionRecordDTOList> registrar(@Valid @RequestBody ConsumptionRecordDTOInsert dto) {
         Equipment equipment = eS.listById(dto.getIdEquipment())
                 .orElseThrow(() ->
@@ -63,6 +71,7 @@ public class ConsumptionRecordController {
                         )
                 );
 
+        validarAreaDelEmpleado(equipment);
         validarEquipoActivo(equipment);
 
         ConsumptionRecord cr = mP.map(dto, ConsumptionRecord.class);
@@ -89,8 +98,9 @@ public class ConsumptionRecordController {
         return ResponseEntity.created(location).body(responseDTO);
     }
 
+    // HU060: actualizar un registro de consumo
     @PutMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<ConsumptionRecordDTOList> actualizar(@Valid @RequestBody ConsumptionRecordDTOInsert dto) {
         if (dto.getIdConsumptionRecord() == null) {
             throw new BusinessRuleException("El id del registro de consumo es obligatorio para actualizar");
@@ -133,7 +143,7 @@ public class ConsumptionRecordController {
         return ResponseEntity.ok(responseDTO);
     }
 
-    @GetMapping("/{id}") //Libre, sin token
+    @GetMapping("/{id}") //Cualquier usuario autenticado
     public ResponseEntity<ConsumptionRecordDTOList> listarPorId(@PathVariable Long id) {
         ConsumptionRecord cr = crS.listById(id)
                 .orElseThrow(() ->
@@ -235,12 +245,14 @@ public class ConsumptionRecordController {
 
     // Consulta nativa 1: consumo total por área de una sede
     @GetMapping("/branch/{idBranch}/by-department")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<DepartmentConsumptionDTO>> consumoPorAreaDeSede(@PathVariable Long idBranch) {
         return ResponseEntity.ok(crS.consumptionByDepartmentOfBranch(idBranch));
     }
 
     // Consulta nativa 2: consumo por categoría de equipo en un periodo
     @GetMapping("/by-category")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<CategoryConsumptionDTO>> consumoPorCategoria(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta) {
@@ -299,6 +311,36 @@ public class ConsumptionRecordController {
     }
 
     //Métodos complementarios
+
+    // HU10: un empleado solo puede registrar consumo de los equipos de su propia área.
+    // El administrador y el supervisor pueden registrar en cualquier área.
+    private void validarAreaDelEmpleado(Equipment equipment) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+
+        boolean esAdminOSupervisor = auth.getAuthorities()
+                .stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                        || a.getAuthority().equals("ROLE_SUPERVISOR"));
+
+        if (esAdminOSupervisor) {
+            return;
+        }
+
+        Users usuario = uS.findByEmail(auth.getName())
+                .orElseThrow(() -> new AccessDeniedException("No se pudo identificar al usuario autenticado"));
+
+        if (usuario.getDepartment() == null) {
+            throw new AccessDeniedException("El empleado no tiene un área asignada y no puede registrar consumo");
+        }
+
+        Long areaEmpleado = usuario.getDepartment().getIdDepartment();
+        Long areaEquipo = equipment.getDepartment().getIdDepartment();
+
+        if (!areaEmpleado.equals(areaEquipo)) {
+            throw new AccessDeniedException("Solo puede registrar consumo de los equipos de su área");
+        }
+    }
+
     private void validarEquipoActivo(Equipment equipment) {
         if ("Inactivo".equalsIgnoreCase(equipment.getStatusEquipment())) {
             throw new BusinessRuleException(

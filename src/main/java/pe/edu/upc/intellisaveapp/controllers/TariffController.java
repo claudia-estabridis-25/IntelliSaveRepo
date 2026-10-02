@@ -33,6 +33,7 @@ public class TariffController {
 
     // HU039: listar todas las tarifas
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<TariffDTOList>> listar() {
         List<TariffDTOList> lista = tS.list()
                 .stream()
@@ -44,6 +45,7 @@ public class TariffController {
 
     // HU039: historial de tarifas de una sede
     @GetMapping("/branch/{idBranch}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<TariffDTOList>> listarPorSede(@PathVariable Long idBranch) {
         buscarSede(idBranch);
 
@@ -57,6 +59,7 @@ public class TariffController {
 
     // HU044: tarifa vigente de una sede (hoy, o en la fecha indicada)
     @GetMapping("/branch/{idBranch}/current")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<TariffDTOList> tarifaVigente(
             @PathVariable Long idBranch,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
@@ -75,12 +78,14 @@ public class TariffController {
 
     // HU054: detalle de una tarifa
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<TariffDTOList> listarPorId(@PathVariable Long id) {
         return ResponseEntity.ok(toDTO(buscarTarifa(id)));
     }
 
     // HU15: registrar tarifa
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<TariffDTOList> registrar(@Valid @RequestBody TariffDTOInsert dto) {
         Branch branch = buscarSede(dto.getIdBranch());
         validarTarifa(dto, null);
@@ -100,6 +105,7 @@ public class TariffController {
 
     // HU040: actualizar tarifa
     @PutMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<TariffDTOList> actualizar(@Valid @RequestBody TariffDTOInsert dto) {
         if (dto.getIdTariff() == null) {
             throw new BusinessRuleException("El id de la tarifa es obligatorio para actualizar");
