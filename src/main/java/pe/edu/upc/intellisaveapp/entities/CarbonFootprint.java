@@ -6,7 +6,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "carbon_footprints")
-public class CarbonFootprint { //FALTA CRUD Y QUERIES
+public class CarbonFootprint {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idFootprint; //PK

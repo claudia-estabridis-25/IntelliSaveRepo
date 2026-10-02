@@ -2,6 +2,7 @@ package pe.edu.upc.intellisaveapp.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import pe.edu.upc.intellisaveapp.entities.Users;
 
@@ -37,4 +38,12 @@ public interface IUsersRepository extends JpaRepository<Users, Long> {
             "ORDER BY b.id_branch, d.id_department",
             nativeQuery = true)
     List<Object[]> countUsersByDepartment();
+
+    // Correos de los supervisores activos de un área (HU049)
+    @Query(value = "SELECT u.email_user FROM users u " +
+            "JOIN roles r ON r.id_user = u.id_user " +
+            "WHERE u.id_department = :idDepartment " +
+            "AND r.name_role = 'ROLE_SUPERVISOR' AND u.status_user = true",
+            nativeQuery = true)
+    List<String> findSupervisorEmailsByDepartment(@Param("idDepartment") Long idDepartment);
 }

@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "alerts")
-public class Alert { //FALTA CRUD Y QUERIES
+public class Alert {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long idAlert; //PK
@@ -34,7 +34,10 @@ public class Alert { //FALTA CRUD Y QUERIES
     private double kwhDetected; //Consumo (en kWh) detectado que generó la alerta
 
     @Column(name = "statusAlert", length = 20, nullable = false)
-    private String statusAlert; //En progreso, Resuelta, Omitida, No Resuelta
+    private String statusAlert; //Pendiente, En revisión, Atendida, Descartada
+
+    @Column(name = "dateTimeResolution") //Puede ser nulo: se llena cuando la alerta pasa a "Atendida" o "Descartada"
+    private LocalDateTime dateTimeResolution;
 
     public Alert() {
     }
@@ -123,5 +126,13 @@ public class Alert { //FALTA CRUD Y QUERIES
 
     public void setStatusAlert(String statusAlert) {
         this.statusAlert = statusAlert;
+    }
+
+    public LocalDateTime getDateTimeResolution() {
+        return dateTimeResolution;
+    }
+
+    public void setDateTimeResolution(LocalDateTime dateTimeResolution) {
+        this.dateTimeResolution = dateTimeResolution;
     }
 }
