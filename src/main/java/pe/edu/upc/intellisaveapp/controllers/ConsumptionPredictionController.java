@@ -14,6 +14,8 @@ import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionPredictionService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IEquipmentService;
+import org.springframework.security.access.prepost.PreAuthorize;
+import pe.edu.upc.intellisaveapp.dtos.PredictionDepartmentDTO;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -90,6 +92,13 @@ public class ConsumptionPredictionController {
         PredictionDTOList dto = pS.listById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe una predicción con el id: " + id));
         return ResponseEntity.ok(dto);
+    }
+
+    // Consulta nativa con JOIN: predicciones por área y estado
+    @GetMapping("/by-department")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<List<PredictionDepartmentDTO>> prediccionesPorArea() {
+        return ResponseEntity.ok(pS.predictionsByDepartment());
     }
 
     // HU055: evaluar a mano las predicciones terminadas

@@ -4,6 +4,7 @@ import pe.edu.upc.intellisaveapp.dtos.PredictionDTOList;
 import pe.edu.upc.intellisaveapp.dtos.PredictionResultDTO;
 import pe.edu.upc.intellisaveapp.entities.Department;
 import pe.edu.upc.intellisaveapp.entities.Equipment;
+import pe.edu.upc.intellisaveapp.dtos.PredictionDepartmentDTO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -15,4 +16,5 @@ public interface IConsumptionPredictionService {
     public List<PredictionDTOList> list(Long idDepartment, Long idEquipment, String status);
     public Optional<PredictionDTOList> listById(Long id);
     public List<PredictionDTOList> evaluateFinishedPredictions();
+    public List<PredictionDepartmentDTO> predictionsByDepartment();
 }

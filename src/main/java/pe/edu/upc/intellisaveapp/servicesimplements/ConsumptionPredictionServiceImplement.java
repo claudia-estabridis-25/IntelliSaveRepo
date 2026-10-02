@@ -15,6 +15,7 @@ import pe.edu.upc.intellisaveapp.repositories.IConsumptionPredictionRepository;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionPredictionService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ITariffService;
+import pe.edu.upc.intellisaveapp.dtos.PredictionDepartmentDTO;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
@@ -188,6 +189,25 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
         }
 
         return terminadas.stream().map(this::toDTO).toList();
+    }
+
+    // Consulta nativa: predicciones por área y estado
+    @Override
+    public List<PredictionDepartmentDTO> predictionsByDepartment() {
+        // Se actualizan antes los estados de las predicciones cuyo periodo ya terminó (HU055)
+        evaluateFinishedPredictions();
+
+        return pR.predictionsByDepartment()
+                .stream()
+                .map(fila -> new PredictionDepartmentDTO(
+                        ((Number) fila[0]).longValue(),                  // id_department
+                        (String) fila[1],                                // name_department
+                        (String) fila[2],                                // status_prediction
+                        ((Number) fila[3]).longValue(),                  // total_predicciones
+                        redondear(((Number) fila[4]).doubleValue()),     // kwh_predicho
+                        redondear(((Number) fila[5]).doubleValue())      // confianza_promedio
+                ))
+                .toList();
     }
 
     // ===================== MÉTODOS DE APOYO =====================

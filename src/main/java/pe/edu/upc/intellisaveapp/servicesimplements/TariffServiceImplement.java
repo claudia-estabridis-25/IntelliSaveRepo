@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import pe.edu.upc.intellisaveapp.entities.Tariff;
 import pe.edu.upc.intellisaveapp.repositories.ITariffRepository;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ITariffService;
+import pe.edu.upc.intellisaveapp.dtos.TariffSupplierDTO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -48,5 +49,23 @@ public class TariffServiceImplement implements ITariffService {
     @Override
     public Optional<Tariff> listById(Long id) {
         return tR.findById(id);
+    }
+
+    @Override
+    public List<TariffSupplierDTO> tariffsBySupplier() {
+        return tR.tariffsBySupplier()
+                .stream()
+                .map(fila -> new TariffSupplierDTO(
+                        ((Number) fila[0]).longValue(),                  // id_branch
+                        (String) fila[1],                                // name_branch
+                        (String) fila[2],                                // proveedor
+                        ((Number) fila[3]).longValue(),                  // total_tarifas
+                        redondear(((Number) fila[4]).doubleValue())      // costo_promedio
+                ))
+                .toList();
+    }
+
+    private Double redondear(double valor) {
+        return Math.round(valor * 10000.0) / 10000.0;
     }
 }
