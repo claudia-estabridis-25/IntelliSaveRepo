@@ -13,6 +13,7 @@ import pe.edu.upc.intellisaveapp.dtos.ConsumptionReportDTO;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IReportService;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
 @RestController
@@ -53,6 +54,24 @@ public class ReportController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"reporte-consumo.pdf\"")
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    // HU048: descarga del reporte en CSV (se abre en Excel)
+    @GetMapping("/consumption/csv")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<byte[]> reporteConsumoCsv(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime desde,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime hasta,
+            @RequestParam(required = false) Long idBranch) {
+
+        validarRangoFechas(desde, hasta);
+
+        byte[] csv = rS.generateConsumptionReportCsv(desde, hasta, idBranch);
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"reporte-consumo.csv\"")
+                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
+                .body(csv);
     }
 
     private void validarRangoFechas(LocalDateTime desde, LocalDateTime hasta) {
