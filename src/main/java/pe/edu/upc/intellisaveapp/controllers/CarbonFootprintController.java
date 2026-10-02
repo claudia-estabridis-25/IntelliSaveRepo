@@ -121,7 +121,7 @@ public class CarbonFootprintController {
         return ResponseEntity.ok(cfS.emissionsByDepartment(idBranch));
     }
 
-    // Detalle de una huella de carbono
+    // Detalle de una huella de carbono, Listar por id
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<CarbonFootprintDTOList> listarPorId(@PathVariable Long id) {
