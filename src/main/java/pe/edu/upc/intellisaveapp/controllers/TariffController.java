@@ -13,6 +13,8 @@ import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IBranchService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ITariffService;
+import org.springframework.security.access.prepost.PreAuthorize;
+import pe.edu.upc.intellisaveapp.dtos.TariffSupplierDTO;
 
 import java.net.URI;
 import java.time.LocalDate;
@@ -113,6 +115,13 @@ public class TariffController {
         return ResponseEntity.ok(toDTO(tariff));
     }
 
+    // Consulta nativa con JOIN: cantidad de tarifas y costo promedio por proveedor y sede
+    @GetMapping("/by-supplier")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<List<TariffSupplierDTO>> tarifasPorProveedor() {
+        return ResponseEntity.ok(tS.tariffsBySupplier());
+    }
+
     // No hay DELETE: las tarifas forman parte del historial de costos (regla de negocio)
 
     // ===================== MÉTODOS DE APOYO =====================
@@ -171,4 +180,5 @@ public class TariffController {
         dto.setSupplier(tariff.getSupplier());
         return dto;
     }
+
 }

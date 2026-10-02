@@ -1,6 +1,7 @@
 package pe.edu.upc.intellisaveapp.servicesinterfaces;
 
 import pe.edu.upc.intellisaveapp.entities.Tariff;
+import pe.edu.upc.intellisaveapp.dtos.TariffSupplierDTO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -13,4 +14,5 @@ public interface ITariffService {
     public void insert(Tariff t);
     public void update(Tariff t);
     public Optional<Tariff> listById(Long id);
+    public List<TariffSupplierDTO> tariffsBySupplier();
 }
