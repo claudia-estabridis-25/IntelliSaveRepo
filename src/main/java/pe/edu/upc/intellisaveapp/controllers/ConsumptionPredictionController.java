@@ -38,6 +38,7 @@ public class ConsumptionPredictionController {
 
     // HU013: generar la predicción de un área o de un equipo
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<PredictionResultDTO> generar(@Valid @RequestBody PredictionRequestDTO dto) {
         LocalDate inicio = dto.getInitialDatePrediction();
         LocalDate fin = dto.getEndDatePrediction();
@@ -79,6 +80,7 @@ public class ConsumptionPredictionController {
     // HU051: historial de predicciones, con filtros opcionales
     // (antes de listar, el service evalúa automáticamente las predicciones terminadas: HU055)
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<PredictionDTOList>> historial(
             @RequestParam(required = false) Long idDepartment,
             @RequestParam(required = false) Long idEquipment,
@@ -88,6 +90,7 @@ public class ConsumptionPredictionController {
 
     // Detalle de una predicción
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<PredictionDTOList> listarPorId(@PathVariable Long id) {
         PredictionDTOList dto = pS.listById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe una predicción con el id: " + id));
@@ -103,6 +106,7 @@ public class ConsumptionPredictionController {
 
     // HU055: evaluar a mano las predicciones terminadas
     @PostMapping("/evaluate")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<PredictionDTOList>> evaluar() {
         return ResponseEntity.ok(pS.evaluateFinishedPredictions());
     }
