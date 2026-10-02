@@ -16,11 +16,13 @@ import org.springframework.stereotype.Service;
 import pe.edu.upc.intellisaveapp.dtos.ConsumptionReportDTO;
 import pe.edu.upc.intellisaveapp.dtos.ReportItemDTO;
 import pe.edu.upc.intellisaveapp.entities.ConsumptionRecord;
+import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IReportService;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
@@ -145,6 +147,57 @@ public class ReportServiceImplement implements IReportService {
         return out.toByteArray();
     }
 
+    // ===================== HU048: REPORTE (CSV) =====================
+
+    @Override
+    public byte[] generateConsumptionReportCsv(LocalDateTime desde, LocalDateTime hasta, Long idBranch) {
+        List<ConsumptionRecord> registros = crS.listHistory(idBranch, null, null, desde, hasta);
+
+        // HU048 CA03: si no hay datos, no se genera el archivo
+        if (registros.isEmpty()) {
+            throw new BusinessRuleException("No existen datos de consumo para los parámetros seleccionados");
+        }
+
+        List<ReportItemDTO> porSede = agrupar(registros,
+                cr -> cr.getEquipment().getDepartment().getBranch().getIdBranch(),
+                cr -> cr.getEquipment().getDepartment().getBranch().getNameBranch(),
+                cr -> cr.getEquipment().getDepartment().getBranch().getAddressBranch());
+
+        List<ReportItemDTO> porArea = agrupar(registros,
+                cr -> cr.getEquipment().getDepartment().getIdDepartment(),
+                cr -> cr.getEquipment().getDepartment().getNameDepartment(),
+                cr -> cr.getEquipment().getDepartment().getBranch().getNameBranch());
+
+        // En el CSV van todos los equipos (en el PDF solo el top 5)
+        List<ReportItemDTO> porEquipo = agrupar(registros,
+                cr -> cr.getEquipment().getIdEquipment(),
+                cr -> cr.getEquipment().getNameEquipment(),
+                cr -> cr.getEquipment().getDepartment().getNameDepartment());
+
+        StringBuilder csv = new StringBuilder();
+        csv.append('\uFEFF'); // BOM: hace que Excel muestre bien las tildes y la ñ
+
+        // HU048 CA02: una fila de encabezados y una fila por cada sede, área y equipo
+        csv.append("Tipo,Id,Nombre,Detalle,Registros,kWh,Costo (S/)\n");
+        agregarFilasCsv(csv, "Sede", porSede);
+        agregarFilasCsv(csv, "Área", porArea);
+        agregarFilasCsv(csv, "Equipo", porEquipo);
+
+        // Fila final con el total del periodo
+        String periodo = desde.format(FORMATO_FECHA) + " al " + hasta.format(FORMATO_FECHA);
+        csv.append(String.join(",",
+                "Total",
+                "",
+                "Todo el periodo",
+                textoCsv(periodo),
+                String.valueOf(registros.size()),
+                formatear(redondear(sumarKwh(registros))),
+                formatear(redondear(sumarCosto(registros)))
+        )).append("\n");
+
+        return csv.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
     // ===================== MÉTODOS DE APOYO =====================
 
     private List<ReportItemDTO> agrupar(List<ConsumptionRecord> registros,
@@ -241,5 +294,30 @@ public class ReportServiceImplement implements IReportService {
 
     private String formatear(Double valor) {
         return String.format(Locale.US, "%.2f", valor);
+    }
+
+    private void agregarFilasCsv(StringBuilder csv, String tipo, List<ReportItemDTO> items) {
+        for (ReportItemDTO item : items) {
+            csv.append(String.join(",",
+                    tipo,
+                    String.valueOf(item.getId()),
+                    textoCsv(item.getName()),
+                    textoCsv(item.getDetail()),
+                    String.valueOf(item.getRecordCount()),
+                    formatear(item.getTotalKwh()),
+                    formatear(item.getTotalCost())
+            )).append("\n");
+        }
+    }
+
+    // Si un texto tiene comas, comillas o saltos de línea, se encierra entre comillas para no romper el formato
+    private String textoCsv(String valor) {
+        if (valor == null) {
+            return "";
+        }
+        if (valor.contains(",") || valor.contains("\"") || valor.contains("\n") || valor.contains("\r")) {
+            return "\"" + valor.replace("\"", "\"\"") + "\"";
+        }
+        return valor;
     }
 }
