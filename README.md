@@ -15,7 +15,7 @@ Curso: Arquitectura de Aplicaciones Web (SI705) — UPC, 2026-20 — Equipo 3
 | Juan Sebastián Finetti | [Jsebas05](https://github.com/Jsebas05) | `Juan_Finetti` |
 | Kevin Díaz | [Bytesing777](https://github.com/Bytesing777) | `Kevin` |
 | Sebastián Ramírez | [sebastianrs13](https://github.com/sebastianrs13) | `Sebastian_Ramirez` |
-| Francis *(apellido por completar)* | *(por completar)* | `Francis` |
+| Francis Ariza Benites | [fran2026-01](https://github.com/fran2026-01) | `Francis` |
 
 Cada integrante trabaja en su propia rama y sus cambios se integran a `main` mediante Pull Requests.
 
