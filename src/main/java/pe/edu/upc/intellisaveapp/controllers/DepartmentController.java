@@ -85,6 +85,11 @@ public class DepartmentController {
                 .map(department -> modelMapper.map(department, DepartmentDTO.class))
                 .toList();
 
+        // HU022 CA03: la sede no tiene áreas registradas
+        if (lista.isEmpty()) {
+            throw new ResourceNotFoundException("Esta sede no tiene áreas registradas");
+        }
+
         return ResponseEntity.ok(lista);
     }
 

@@ -2,10 +2,12 @@ package pe.edu.upc.intellisaveapp;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 // Aquí también podemos encontrar Spring Boot, en la clase base
 
 @SpringBootApplication //Anotación de Spring Boot que indica que esta clase es la clase principal de la aplicación
+@EnableScheduling //Habilita las tareas automáticas con @Scheduled (ver configs/ScheduledTasks: HU17 y HU21)
 public class IntelliSaveAppApplication {
 
     public static void main(String[] args) {
