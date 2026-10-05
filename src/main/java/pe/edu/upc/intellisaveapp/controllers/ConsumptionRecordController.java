@@ -35,6 +35,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/consumption-records")
 public class ConsumptionRecordController {
+    // HU012 CA04: mensaje cuando no hay equipos con consumo elevado
+    private static final String SIN_CONSUMO_ELEVADO = "No se han detectado equipos con consumo elevado";
+
     private final IConsumptionRecordService crS;
     private final IEquipmentService eS;
     private final ITariffService tS;
@@ -280,7 +283,7 @@ public class ConsumptionRecordController {
                 ));
 
         if (totalPorEquipo.isEmpty()) {
-            return ResponseEntity.ok(List.of());
+            throw new ResourceNotFoundException(SIN_CONSUMO_ELEVADO);
         }
 
         // 2. Promedio del área = promedio de los totales de sus equipos
@@ -306,6 +309,11 @@ public class ConsumptionRecordController {
                     return dto;
                 })
                 .toList();
+
+        // HU012 CA04: ningún equipo supera el umbral de consumo elevado
+        if (resultado.isEmpty()) {
+            throw new ResourceNotFoundException(SIN_CONSUMO_ELEVADO);
+        }
 
         return ResponseEntity.ok(resultado);
     }
