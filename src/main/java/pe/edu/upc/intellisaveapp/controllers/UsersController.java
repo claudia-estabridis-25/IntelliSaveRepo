@@ -19,6 +19,7 @@ import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IUsersService;
 import pe.edu.upc.intellisaveapp.dtos.DepartmentUserCountDTO;
 import pe.edu.upc.intellisaveapp.dtos.RoleUserCountDTO;
+import pe.edu.upc.intellisaveapp.entities.Branch;
 
 import java.net.URI;
 import java.util.List;
@@ -260,6 +261,11 @@ public class UsersController {
         if (user.getDepartment() != null) {
             dto.setIdDepartment(user.getDepartment().getIdDepartment());
             dto.setNameDepartment(user.getDepartment().getNameDepartment());
+            Branch sede = user.getDepartment().getBranch();
+            dto.setIdBranch(sede.getIdBranch());
+            dto.setNameBranch(sede.getNameBranch());
+            dto.setIdCompany(sede.getCompany().getIdCompany());
+            dto.setNameCompany(sede.getCompany().getComercialNamecompany());
         }
         dto.setRoles(uS.rolesOf(user.getIdUser()));
         return dto;
