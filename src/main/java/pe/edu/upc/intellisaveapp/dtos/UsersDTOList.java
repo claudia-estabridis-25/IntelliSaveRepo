@@ -15,6 +15,10 @@ public class UsersDTOList {
     private Boolean statusUser;
     private Long idDepartment;
     private String nameDepartment;
+    private Long idBranch;
+    private String nameBranch;
+    private Long idCompany;
+    private String nameCompany;
     private List<String> roles;
 
     public Long getIdUser() {
@@ -119,5 +123,37 @@ public class UsersDTOList {
 
     public void setRoles(List<String> roles) {
         this.roles = roles;
+    }
+
+    public Long getIdBranch() {
+        return idBranch;
+    }
+
+    public void setIdBranch(Long idBranch) {
+        this.idBranch = idBranch;
+    }
+
+    public String getNameBranch() {
+        return nameBranch;
+    }
+
+    public void setNameBranch(String nameBranch) {
+        this.nameBranch = nameBranch;
+    }
+
+    public Long getIdCompany() {
+        return idCompany;
+    }
+
+    public void setIdCompany(Long idCompany) {
+        this.idCompany = idCompany;
+    }
+
+    public String getNameCompany() {
+        return nameCompany;
+    }
+
+    public void setNameCompany(String nameCompany) {
+        this.nameCompany = nameCompany;
     }
 }
