@@ -8,6 +8,7 @@ import pe.edu.upc.intellisaveapp.entities.Branch;
 
 import java.util.List;
 
+// @Repository -> Pertenece a Spring Data
 @Repository
 public interface IBranchRepository extends JpaRepository<Branch, Long> {
     List<Branch> findByCompany_IdCompany(Long idCompany);

@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import pe.edu.upc.intellisaveapp.dtos.ErrorResponse;
 
+// @RestControllerAdvice pertenece a Spring MVC, que maneja excepciones y
+// respuestas globales para controladores REST.
+// Permite centralizar el manejo de excepciones para todos los controladores REST.
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -62,6 +65,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error);
     }
 
+    /* Lo comento para que deje eliminar entidades relacionadas (como Company)
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(
             DataIntegrityViolationException ex,
@@ -75,6 +79,7 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
+    */
 
     // 403: el usuario tiene token, pero su rol no le permite la acción
     @ExceptionHandler(AccessDeniedException.class)

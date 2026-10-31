@@ -2,6 +2,7 @@ package pe.edu.upc.intellisaveapp.entities;
 
 import jakarta.persistence.*;
 
+//Spring Data JPA
 @Entity
 @Table(name = "companies")
 public class Company {
