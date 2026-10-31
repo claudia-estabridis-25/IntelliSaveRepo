@@ -18,7 +18,7 @@ import java.util.List;
 llame a un endpoint. Así se cumplen las HU que dicen "automáticamente":
 - HU17: el sistema consulta el clima de todas las sedes cada hora.
 - HU21: el sistema analiza los consumos de cada área y genera alertas cada noche.
-@Scheduled(cron = ...) indica cuándo se ejecuta cada método (segundo, minuto, hora, día, mes, día de la semana).
+@Scheduled(cron = ...) indica cuándo se ejecuta cada mtodo (segundo, minuto, hora, día, mes, día de la semana).
 Para que funcione, la clase principal (IntelliSaveAppApplication) tiene la anotación @EnableScheduling.
 Los endpoints manuales (POST /api/climate-records/refresh y POST /api/alerts/department/{id}/generate)
 siguen funcionando igual; estas tareas solo reutilizan los mismos métodos de los services.

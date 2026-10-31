@@ -18,8 +18,17 @@ import pe.edu.upc.intellisaveapp.servicesinterfaces.ICompanyService;
 import java.net.URI;
 import java.util.List;
 
+// @RestController pertenece a Spring MVC, que marca una clase que expone endpoints REST
+// Spring MVC (Model-View-Controller) es el módulo de Spring que permite crear aplicaciones web y APIs HTTP.
+// Se encarga de recibir las peticiones del navegador o de un cliente (Postman, aplicación móvil, frontend, etc.),
+// para procesarlas y devolver una respuesta.
+
+// @RestController marca controladores web y los convierte en Beans
+// @RestController combina @Controller y @ResponseBody, lo que significa que los métodos de esta clase devuelven
+// datos directamente en el cuerpo de la respuesta HTTP, generalmente en formato JSON, en lugar de devolver vistas (HTML).
+
 @RestController
-@RequestMapping("/api/companies")
+@RequestMapping("/api/companies") // @RequestMapping("/api/companies") define la ruta base para todos los endpoints de este controlador.
 public class CompanyController {
     private final ICompanyService cS;
     private final ModelMapper mP;

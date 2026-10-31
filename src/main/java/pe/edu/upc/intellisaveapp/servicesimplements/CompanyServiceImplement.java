@@ -8,6 +8,15 @@ import pe.edu.upc.intellisaveapp.servicesinterfaces.ICompanyService;
 import java.util.List;
 import java.util.Optional;
 
+// @Service -> Pertenece a Spring Core o Inversión de Control (IoC)
+
+// @Service es una anotación de Spring que indica que esta clase es un servicio, osea que contiene la lógica de
+// negocio de la aplicación. Los servicios son clases que contienen métodos que realizan operaciones específicas,
+// como acceder a la base de datos, procesar datos, etc. Al marcar esta clase con @Service, Spring la detecta
+// automáticamente y la registra como un bean en el contenedor de Spring, lo que permite que pueda ser inyectada en
+// otras clases mediante inyección de dependencias.
+// En resumen: @Service hace que Spring marque la clase como servicio de lógica de negocio y la convierte en Bean.
+
 @Service
 public class CompanyServiceImplement implements ICompanyService {
     private final ICompanyRepository cR;
@@ -16,7 +25,9 @@ public class CompanyServiceImplement implements ICompanyService {
         this.cR = cR;
     }
 
-
+    // @Override indica que este metodo está sobrescribiendo un metodo de la interfaz ICompanyService.
+    // Esto es útil para asegurarse de que el metodo realmente existe en la interfaz y que se está implementando
+    // correctamente. Si el metodo no coincide con la firma del metodo en la interfaz, el compilador generará un error.
     @Override
     public List<Company> list() {
         return cR.findAll();

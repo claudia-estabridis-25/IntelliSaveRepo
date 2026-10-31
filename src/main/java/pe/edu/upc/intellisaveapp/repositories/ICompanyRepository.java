@@ -6,7 +6,13 @@ import org.springframework.stereotype.Repository;
 import pe.edu.upc.intellisaveapp.entities.Company;
 
 import java.util.List;
+// @Repository -> Pertenece a Spring Data
 
+// @Repository es una anotación de Spring que indica que esta interfaz es un repositorio de Spring Data JPA,
+// lo que permite a Spring manejar la persistencia de datos y las operaciones de base de datos para la entidad Company.
+// JpaRepository es una interfaz de Spring Data JPA que proporciona métodos CRUD (Create, Read, Update, Delete) y
+// de paginación para la entidad Company. Al extender JpaRepository, ICompanyRepository hereda automáticamente estos
+// métodos y puede definir consultas personalizadas mediante anotaciones como @Query.
 @Repository
 public interface ICompanyRepository extends JpaRepository<Company, Long> {
     // Consulta simple 1: cantidad de empresas por sector

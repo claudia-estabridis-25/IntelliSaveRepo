@@ -9,6 +9,8 @@ import java.net.http.HttpClient;
 import java.time.Duration;
 
 // Cliente de la API meteorológica Open-Meteo (no requiere clave)
+// @Component le indica a Spring que esta clase también debe ser administrada por Spring como un Bean.
+// Esta clase permite consultar el clima actual en una ubicación específica, utilizando la API de Open-Meteo.
 @Component
 public class WeatherApiClient {
     private static final String URL = "https://api.open-meteo.com/v1/forecast"
