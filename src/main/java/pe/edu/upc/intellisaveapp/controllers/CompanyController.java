@@ -13,6 +13,7 @@ import pe.edu.upc.intellisaveapp.dtos.SectorCountDTO;
 import pe.edu.upc.intellisaveapp.entities.Company;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
+import pe.edu.upc.intellisaveapp.securities.CompanyAccess;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ICompanyService;
 
 import java.net.URI;
@@ -32,17 +33,24 @@ import java.util.List;
 public class CompanyController {
     private final ICompanyService cS;
     private final ModelMapper mP;
+    private final CompanyAccess acceso;
 
-    public CompanyController(ICompanyService cS, ModelMapper mP) {
+    public CompanyController(ICompanyService cS, ModelMapper mP, CompanyAccess acceso) {
         this.cS = cS;
         this.mP = mP;
+        this.acceso = acceso;
     }
 
     //Listar empresas
     @GetMapping //Cualquier usuario autenticado
     public ResponseEntity<List<CompanyDTOList>> listar(){
+        Long idEmpresa = acceso.idEmpresaUsuario(); //Obteniendo el id de la empresa del usuario autenticado
+
         List<CompanyDTOList> lista = cS.list()
                 .stream()
+                // Filtrando por empresa: Si el usuario es admin devuelve todas las empresas, y si no es admin
+                // devuelve solo la empresa a la que pertenece este usuario.
+                .filter(company -> idEmpresa == null || company.getIdCompany().equals(idEmpresa))
                 .map(company -> mP.map(company, CompanyDTOList.class))
                 .toList();
 
@@ -53,6 +61,9 @@ public class CompanyController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<CompanyDTOInsert> registrar(@Valid @RequestBody CompanyDTOInsert dto) {
+        //Validando que el usuario autenticado sea admin de la plataforma, ya que solo el admin puede registrar empresas
+        acceso.validarAdminDePlataforma();
+
         Company company = mP.map(dto, Company.class);
         company.setIdCompany(null); //Un POST siempre crea una empresa nueva
 
@@ -84,9 +95,11 @@ public class CompanyController {
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "No existe una empresa con el id: " + dto.getIdCompany()
-
                         )
                 );
+
+        //Validando que el usuario autenticado pertenezca a la empresa que está intentando actualizar
+        acceso.validarEmpresa(existente.getIdCompany());
 
         Company company = mP.map(dto, Company.class);
 
@@ -109,7 +122,8 @@ public class CompanyController {
                         )
                 );
 
-        //Optional<Company> company = cS.listById(id);
+        //Validando que el usuario autenticado pertenezca a la empresa que está intentando consultar
+        acceso.validarEmpresa(company.getIdCompany());
 
         CompanyDTOList dto = mP.map(company, CompanyDTOList.class);
 
@@ -120,6 +134,9 @@ public class CompanyController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        //Validando que el usuario autenticado sea admin de la plataforma, ya que solo el admin puede eliminar empresas
+        acceso.validarAdminDePlataforma();
+
         Company company = cS.listById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -134,6 +151,16 @@ public class CompanyController {
     @GetMapping("/count-by-sector")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<SectorCountDTO>> listarEmpresasPorSector() {
+        //Trayendo el id de la empresa del usuario autenticado, si es que tiene uno.
+        Long idEmpresa = acceso.idEmpresaUsuario();
+
+        //Si el usuario autenticado pertenece a una empresa, solo se devuelve la información de su propio sector.
+        if (idEmpresa != null) {
+            Company propia = cS.listById(idEmpresa)
+                    .orElseThrow(() -> new ResourceNotFoundException("No existe una empresa con el id: " + idEmpresa));
+
+            return ResponseEntity.ok(List.of(new SectorCountDTO(propia.getSectorCompany(), 1L)));
+        }
 
         // Convirtiendo la lista devuelta, que es de tipo List<Object[]>, osea devuelve una lista de arreglos,
         // a tipo lista DTO (List<SectorCountDTO>)
@@ -160,9 +187,14 @@ public class CompanyController {
             throw new BusinessRuleException("El RUC debe tener exactamente 11 dígitos numéricos");
         }
 
+        //Trayendo el id de la empresa del usuario autenticado, si es que tiene uno.
+        //Si el usuario autenticado pertenece a una empresa, solo se devuelve la información de su propia empresa.
+        Long idEmpresa = acceso.idEmpresaUsuario();
+
         //Convirtiendo la lista que devuelve el metodo del service (de tipo List<Company>) a tipo DTO
         List<CompanyDTOList> lista = cS.findByRucCompany(ruc)
                 .stream()
+                .filter(company -> idEmpresa == null || company.getIdCompany().equals(idEmpresa))
                 .map(company -> mP.map(company, CompanyDTOList.class))
                 .toList();
 
@@ -178,6 +210,8 @@ public class CompanyController {
     @GetMapping("/structure")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<CompanyStructureDTO>> estructuraPorEmpresa() {
+        //Trayendo el id de la empresa del usuario autenticado, si es que tiene uno.
+        Long idEmpresa = acceso.idEmpresaUsuario();
 
         //Convirtiendo de tipo List<Object[]> a tipo List<CompanyStructureDTO>
         //En este caso, hay 4 valores en el array que devuelve Object[], los cuales deben
@@ -185,6 +219,9 @@ public class CompanyController {
         //Ejm: fila = [1, "MiEmpresa SAC", 5, 16]
         List<CompanyStructureDTO> lista = cS.structureByCompany()
                 .stream()
+        //Validando que el id de la empresa de la consulta sea igual al id de empresa del usuario autenticado.
+        //Si el usuario no tiene id de empresa, es admin, y puede ver todas las empresas, por eso se deja pasar el null.
+                .filter(fila -> idEmpresa == null || ((Number) fila[0]).longValue() == idEmpresa)
                 .map(fila -> new CompanyStructureDTO(
                         ((Number) fila[0]).longValue(), //idCompany
                         (String) fila[1], //formalNameCompany
