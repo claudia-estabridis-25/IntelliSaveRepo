@@ -11,11 +11,14 @@ import pe.edu.upc.intellisaveapp.entities.Branch;
 import pe.edu.upc.intellisaveapp.entities.Company;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
+import pe.edu.upc.intellisaveapp.securities.CompanyAccess;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IBranchService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ICompanyService;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/branches")
@@ -23,18 +26,26 @@ public class BranchController {
     private final IBranchService bS;
     private final ICompanyService cS;
     private final ModelMapper modelMapper;
+    private final CompanyAccess acceso;
 
-    public BranchController(IBranchService bS, ICompanyService cS, ModelMapper modelMapper) {
+    public BranchController(IBranchService bS, ICompanyService cS, ModelMapper modelMapper, CompanyAccess acceso) {
         this.bS = bS;
         this.cS = cS;
         this.modelMapper = modelMapper;
+        this.acceso = acceso;
     }
 
     //Listar todas las sedes
     @GetMapping //Cualquier usuario autenticado
     public ResponseEntity<List<BranchDTOList>> listar() {
+        // Trayendo el id de la empresa del usuario autenticado, si es que tiene uno, para validar que solo
+        // pueda ver la información de su propia empresa. Si el usuario autenticado es admin, entonces idEmpresa
+        // será null y podrá ver todas las sedes.
+        Long idEmpresa = acceso.idEmpresaUsuario();
+
         List<BranchDTOList> lista = bS.list()
                 .stream()
+                .filter(branch -> idEmpresa == null || branch.getCompany().getIdCompany().equals(idEmpresa))
                 .map(branch -> modelMapper.map(branch, BranchDTOList.class))
                 .toList();
 
@@ -45,6 +56,10 @@ public class BranchController {
     @GetMapping("/company/{idCompany}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR', 'EMPLOYEE')")
     public ResponseEntity<List<BranchDTOList>> listarPorEmpresa(@PathVariable Long idCompany) {
+        // Validando que el id de empresa del usuario autenticado sea igual al id de empresa que está consultando
+        // (el ide de empresa se obtiene por medio de la sede).
+        acceso.validarEmpresa(idCompany);
+
         cS.listById(idCompany)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -74,6 +89,10 @@ public class BranchController {
                         )
                 );
 
+        // Validando que el id de empresa del usuario autenticado sea igual al id de empresa asociado a la sede
+        // que está registrando, es decir, que pertenezca a la empresa.
+        acceso.validarEmpresa(company.getIdCompany());
+
         Branch b = modelMapper.map(dto, Branch.class);
         b.setIdBranch(null); //Un POST siempre crea una sede nueva
         b.setCompany(company);
@@ -94,6 +113,7 @@ public class BranchController {
     @PutMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<BranchDTOInsert> actualizar(@Valid @RequestBody BranchDTOInsert dto) {
+
         if (dto.getIdBranch() == null) {
             throw new BusinessRuleException("El id de la sede es obligatorio para actualizar");
         }
@@ -106,12 +126,20 @@ public class BranchController {
                         )
                 );
 
+        // Verificando que el id de empresa del usuario autenticado sea
+        // igual al id de empresa asociado a la sede que está actualizando.
+        acceso.validarEmpresa(branch.getCompany().getIdCompany());
+
         Company company = cS.listById(dto.getIdCompany())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "No existe una empresa con el id: " + dto.getIdCompany()
                         )
                 );
+
+        // Impidiendo que el usuario mueva la sede a otra empresa, ya que solo puede actualizar
+        // los datos de sedes dentro de su propia empresa.
+        acceso.validarEmpresa(company.getIdCompany());
 
         branch.setNameBranch(dto.getNameBranch());
         branch.setAddressBranch(dto.getAddressBranch());
@@ -137,6 +165,8 @@ public class BranchController {
                         )
                 );
 
+        acceso.validarEmpresa(branch.getCompany().getIdCompany());
+
         BranchDTOInsert dto = modelMapper.map(branch, BranchDTOInsert.class);
 
         return ResponseEntity.ok(dto);
@@ -153,6 +183,8 @@ public class BranchController {
                         )
                 );
 
+        acceso.validarEmpresa(branch.getCompany().getIdCompany());
+
         bS.delete(branch.getIdBranch());
 
         return ResponseEntity.noContent().build();
@@ -162,10 +194,13 @@ public class BranchController {
     @GetMapping("/structure")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<BranchStructureDTO>> estructuraPorSede() {
+        Set<Long> sedes = sedesVisibles();
+
         //Convirtiendo
         //Ejemplo de arreglo devuelto: [1, "Sede Lima", 9, 86]
         List<BranchStructureDTO> lista = bS.structureByBranch()
                 .stream()
+                .filter(fila -> sedes == null || sedes.contains(((Number) fila[0]).longValue()))
                 .map(fila -> new BranchStructureDTO(
                         ((Number) fila[0]).longValue(), //idBranch
                         (String) fila[1], //nameBranch
@@ -181,9 +216,12 @@ public class BranchController {
     @GetMapping("/equipment-status")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<DepartmentEquipmentStatusDTO>> equiposPorEstadoDeAreas() {
+        Set<Long> sedes = sedesVisibles();
+
         //Convirtiendo
         List<DepartmentEquipmentStatusDTO> lista = bS.equipmentStatusByDepartment()
                 .stream()
+                .filter(fila -> sedes == null || sedes.contains(((Number) fila[0]).longValue()))
                 .map(fila -> new DepartmentEquipmentStatusDTO(
                         ((Number) fila[0]).longValue(), //idBranch
                         (String) fila[1], //nameBranch
@@ -201,6 +239,9 @@ public class BranchController {
     @GetMapping("/company/consumption/{idCompany}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<BranchConsumptionDTO>> consumoPorSedeDeEmpresa(@PathVariable Long idCompany) {
+        //Validando que el id de empresa del usuario autenticado sea igual al id de empresa que está consultando.
+        acceso.validarEmpresa(idCompany);
+
         //Validando que la empresa enviada (su id) exista
         cS.listById(idCompany)
                 .orElseThrow(() ->
@@ -228,9 +269,14 @@ public class BranchController {
     @GetMapping("/installed-power")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<BranchPowerDTO>> potenciaInstaladaPorSede() {
+        //Para que, dependiendo de qué usuario es, solo pueda ver la información de su propia empresa.
+        // Si es admin, puede ver información de todas las sedes.
+        Set<Long> sedes = sedesVisibles();
+
         // Convirtiendo de tipo List<Object[]> a tipo List<BranchPowerDTO>
         List<BranchPowerDTO> lista = bS.installedPowerByBranch()
                 .stream()
+                .filter(fila -> sedes == null || sedes.contains(((Number) fila[0]).longValue()))
                 .map(fila -> new BranchPowerDTO(
                         ((Number) fila[0]).longValue(),    // id_branch
                         (String) fila[1],                  // name_branch
@@ -242,6 +288,19 @@ public class BranchController {
                 .toList();
 
         return ResponseEntity.ok(lista);
+    }
+
+    // Metodo para devolver los ids de las sedes de la empresa donde pertenece el usuario autenticado.
+    // Si es admin, devuelve null (puede ver todas las sedes).
+    private Set<Long> sedesVisibles() {
+        Long idEmpresa = acceso.idEmpresaUsuario();
+        if (idEmpresa == null) {
+            return null;
+        }
+        return bS.listByCompany(idEmpresa)
+                .stream()
+                .map(Branch::getIdBranch)
+                .collect(Collectors.toSet());
     }
 
 
