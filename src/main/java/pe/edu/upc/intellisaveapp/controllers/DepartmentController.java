@@ -12,6 +12,7 @@ import pe.edu.upc.intellisaveapp.entities.Branch;
 import pe.edu.upc.intellisaveapp.entities.Department;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
+import pe.edu.upc.intellisaveapp.securities.CompanyAccess;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IBranchService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 
@@ -24,11 +25,13 @@ public class DepartmentController {
     private final IDepartmentService dS;
     private final IBranchService bS;
     private final ModelMapper modelMapper;
+    private final CompanyAccess acceso;
 
-    public DepartmentController(IDepartmentService dS, IBranchService bS, ModelMapper modelMapper) {
+    public DepartmentController(IDepartmentService dS, IBranchService bS, ModelMapper modelMapper, CompanyAccess acceso) {
         this.dS = dS;
         this.bS = bS;
         this.modelMapper = modelMapper;
+        this.acceso = acceso;
     }
 
     //Registrar
@@ -41,6 +44,10 @@ public class DepartmentController {
                                 "No existe la sede con el id: " + dto.getIdBranch()
                         )
                 );
+
+        //Validando que el id de empresa asociado al usuario que hace la consulta, sea igual al id de la empresa
+        //asociado al área que se registra
+        acceso.validarEmpresa(branch.getCompany().getIdCompany());
 
         Department d = modelMapper.map(dto, Department.class);
         d.setIdDepartment(null); //Un POST siempre crea un área nueva
@@ -61,8 +68,12 @@ public class DepartmentController {
     //Listar todas las áreas
     @GetMapping //Cualquier usuario autenticado
     public ResponseEntity<List<DepartmentDTO>> list() {
+        Long idEmpresa = acceso.idEmpresaUsuario();
+
         List<DepartmentDTO> lista = dS.list()
                 .stream()
+                .filter(department -> idEmpresa == null ||
+                        department.getBranch().getCompany().getIdCompany().equals(idEmpresa))
                 .map(department -> modelMapper.map(department, DepartmentDTO.class))
                 .toList();
 
@@ -73,12 +84,14 @@ public class DepartmentController {
     @GetMapping("/branch/{idBranch}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR', 'EMPLOYEE')")
     public ResponseEntity<List<DepartmentDTO>> listByBranch(@PathVariable Long idBranch) {
-        bS.listById(idBranch)
+        Branch sede = bS.listById(idBranch)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "No existe la sede con el id: " + idBranch
                         )
                 );
+
+        acceso.validarEmpresa(sede.getCompany().getIdCompany());
 
         List<DepartmentDTO> lista = dS.listByBranch(idBranch)
                 .stream()
@@ -97,6 +110,7 @@ public class DepartmentController {
     @PutMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<DepartmentDTO> update(@Valid @RequestBody DepartmentDTO dto) {
+
         if (dto.getIdDepartment() == null) {
             throw new BusinessRuleException("El id del área es obligatorio para actualizar");
         }
@@ -108,12 +122,16 @@ public class DepartmentController {
                         )
                 );
 
+        acceso.validarEmpresa(department.getBranch().getCompany().getIdCompany());
+
         Branch branch = bS.listById(dto.getIdBranch())
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
                                 "No existe una sede con el id: " + dto.getIdBranch()
                         )
                 );
+
+        acceso.validarEmpresa(branch.getCompany().getIdCompany());
 
         department.setNameBoss(dto.getNameBoss());
         department.setNameDepartment(dto.getNameDepartment());
@@ -137,6 +155,8 @@ public class DepartmentController {
                         )
                 );
 
+        acceso.validarEmpresa(dep.getBranch().getCompany().getIdCompany());
+
         DepartmentDTO dto = modelMapper.map(dep, DepartmentDTO.class);
 
         return ResponseEntity.ok(dto);
@@ -153,6 +173,8 @@ public class DepartmentController {
                         )
                 );
 
+        acceso.validarEmpresa(dep.getBranch().getCompany().getIdCompany());
+
         dS.delete(dep.getIdDepartment());
 
         return ResponseEntity.noContent().build();
@@ -162,13 +184,18 @@ public class DepartmentController {
     @GetMapping("/search-by-name")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<DepartmentDTO>> buscarPorNombre(@RequestParam String name) {
+
         if (name.isBlank()) {
             throw new BusinessRuleException("Indique el nombre del área a buscar");
         }
 
+        Long idEmpresa = acceso.idEmpresaUsuario();
+
         //Convirtiendo de tipo entidad (Department) a tipo DTO (DepartmentDTO)
         List<DepartmentDTO> lista = dS.searchByName(name.trim())
                 .stream()
+                .filter(department -> idEmpresa == null ||
+                        department.getBranch().getCompany().getIdCompany().equals(idEmpresa))
                 .map(department -> modelMapper.map(department, DepartmentDTO.class))
                 .toList();
 
