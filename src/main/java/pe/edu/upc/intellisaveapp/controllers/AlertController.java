@@ -16,6 +16,7 @@ import pe.edu.upc.intellisaveapp.entities.Department;
 import pe.edu.upc.intellisaveapp.entities.Equipment;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
+import pe.edu.upc.intellisaveapp.securities.CompanyAccess;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IAlertService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IEquipmentService;
@@ -24,6 +25,9 @@ import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/alerts")
@@ -36,11 +40,13 @@ public class AlertController {
     private final IAlertService aS;
     private final IDepartmentService dS;
     private final IEquipmentService eS;
+    private final CompanyAccess acceso; //Para filtrar y validar la empresa del usuario autenticado
 
-    public AlertController(IAlertService aS, IDepartmentService dS, IEquipmentService eS) {
+    public AlertController(IAlertService aS, IDepartmentService dS, IEquipmentService eS, CompanyAccess acceso) {
         this.aS = aS;
         this.dS = dS;
         this.eS = eS;
+        this.acceso = acceso;
     }
 
     // HU16: listar alertas, con filtros opcionales, ordenadas por fecha (más recientes primero) y prioridad
@@ -52,8 +58,13 @@ public class AlertController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String priority) {
 
+        //Obteniendo el id de la empresa del usuario autenticado. Si es admin de la plataforma, devuelve null
+        Long idCompany = acceso.idEmpresaUsuario();
+
         List<AlertDTOList> lista = aS.list()
                 .stream()
+                //Filtrando por empresa: el admin ve todas las alertas y los demás solo las de su empresa
+                .filter(a -> idCompany == null || companyOf(a).equals(idCompany))
                 .filter(a -> idDepartment == null || a.getDepartment().getIdDepartment().equals(idDepartment))
                 .filter(a -> idEquipment == null || a.getEquipment().getIdEquipment().equals(idEquipment))
                 .filter(a -> status == null || a.getStatusAlert().equalsIgnoreCase(status))
@@ -79,8 +90,13 @@ public class AlertController {
             throw new BusinessRuleException("La fecha 'desde' no puede ser posterior a la fecha 'hasta'");
         }
 
+        //Obteniendo el id de la empresa del usuario autenticado. Si es admin de la plataforma, devuelve null
+        Long idCompany = acceso.idEmpresaUsuario();
+
         List<AlertDTOList> lista = aS.history(type, desde, hasta)
                 .stream()
+                //Filtrando por empresa: el admin ve todo el historial y los demás solo el de su empresa
+                .filter(a -> idCompany == null || companyOf(a).equals(idCompany))
                 .map(this::toDTO)
                 .toList();
 
@@ -98,6 +114,7 @@ public class AlertController {
     @GetMapping("/department/{idDepartment}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<AlertDTOList>> listarPorArea(@PathVariable Long idDepartment) {
+        //Busca el área y valida que sea de la empresa del usuario autenticado
         buscarArea(idDepartment);
 
         List<AlertDTOList> lista = aS.listByDepartment(idDepartment)
@@ -112,6 +129,7 @@ public class AlertController {
     @GetMapping("/equipment/{idEquipment}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<AlertDTOList>> listarPorEquipo(@PathVariable Long idEquipment) {
+        //Busca el equipo y valida que sea de la empresa del usuario autenticado
         buscarEquipo(idEquipment);
 
         List<AlertDTOList> lista = aS.listByEquipment(idEquipment)
@@ -126,8 +144,13 @@ public class AlertController {
     @GetMapping("/status/{status}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<AlertDTOList>> listarPorEstado(@PathVariable String status) {
+        //Obteniendo el id de la empresa del usuario autenticado. Si es admin de la plataforma, devuelve null
+        Long idCompany = acceso.idEmpresaUsuario();
+
         List<AlertDTOList> lista = aS.listByStatus(status)
                 .stream()
+                //Filtrando por empresa: el admin ve todas y los demás solo las de su empresa
+                .filter(a -> idCompany == null || companyOf(a).equals(idCompany))
                 .map(this::toDTO)
                 .toList();
 
@@ -138,27 +161,64 @@ public class AlertController {
     @GetMapping("/count-by-status")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<AlertCountDTO>> contarPorEstado() {
-        return ResponseEntity.ok(aS.countByStatus());
+        Long idCompany = acceso.idEmpresaUsuario();
+
+        //El admin usa la consulta del repositorio, que cuenta las alertas de todas las empresas
+        if (idCompany == null) {
+            return ResponseEntity.ok(aS.countByStatus());
+        }
+
+        //Para los demás usuarios, se cuentan solo las alertas de su empresa
+        return ResponseEntity.ok(countByField(idCompany, Alert::getStatusAlert));
     }
 
     // Consulta simple: cantidad de alertas por nivel de prioridad
     @GetMapping("/count-by-priority")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<AlertCountDTO>> contarPorPrioridad() {
-        return ResponseEntity.ok(aS.countByPriority());
+        Long idCompany = acceso.idEmpresaUsuario();
+
+        //El admin usa la consulta del repositorio, que cuenta las alertas de todas las empresas
+        if (idCompany == null) {
+            return ResponseEntity.ok(aS.countByPriority());
+        }
+
+        //Para los demás usuarios, se cuentan solo las alertas de su empresa
+        return ResponseEntity.ok(countByField(idCompany, Alert::getPriorityLevelAlert));
     }
 
     // Consulta nativa con JOIN: cantidad de alertas por área, tipo y estado
     @GetMapping("/count-by-department")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<AlertDepartmentCountDTO>> contarPorArea() {
-        return ResponseEntity.ok(aS.countByDepartment());
+        Long idCompany = acceso.idEmpresaUsuario();
+
+        //El admin ve el conteo de todas las áreas
+        if (idCompany == null) {
+            return ResponseEntity.ok(aS.countByDepartment());
+        }
+
+        //Ids de las áreas que pertenecen a la empresa del usuario autenticado
+        Set<Long> departmentIds = dS.list()
+                .stream()
+                .filter(d -> d.getBranch().getCompany().getIdCompany().equals(idCompany))
+                .map(Department::getIdDepartment)
+                .collect(Collectors.toSet());
+
+        //De la consulta nativa, se dejan solo las filas de las áreas de su empresa
+        List<AlertDepartmentCountDTO> lista = aS.countByDepartment()
+                .stream()
+                .filter(fila -> departmentIds.contains(fila.getIdDepartment()))
+                .toList();
+
+        return ResponseEntity.ok(lista);
     }
 
     // Registrar alerta manualmente
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<AlertDTOList> registrar(@Valid @RequestBody AlertDTOInsert dto) {
+        //Busca el equipo y valida que sea de la empresa del usuario autenticado
         Equipment equipment = buscarEquipo(dto.getIdEquipment());
 
         Alert alert = new Alert();
@@ -186,6 +246,7 @@ public class AlertController {
             throw new BusinessRuleException("La fecha 'desde' no puede ser posterior a la fecha 'hasta'");
         }
 
+        //Busca el área y valida que sea de la empresa del usuario autenticado
         Department department = buscarArea(idDepartment);
 
         List<AlertDTOList> lista = aS.generateElevatedConsumptionAlerts(department, desde, hasta)
@@ -204,6 +265,8 @@ public class AlertController {
             throw new BusinessRuleException("El id de la alerta es obligatorio para actualizar");
         }
 
+        //Valida que la alerta y el nuevo equipo sean de la empresa del usuario autenticado,
+        //así no se puede mover una alerta a un equipo de otra empresa
         Alert alert = buscarAlerta(dto.getIdAlert());
         Equipment equipment = buscarEquipo(dto.getIdEquipment());
 
@@ -239,25 +302,58 @@ public class AlertController {
 
     // ===================== MÉTODOS DE APOYO =====================
 
+    //Los 3 métodos buscar validan además que el registro sea de la empresa del usuario autenticado.
+    //Si no existe devuelven 404, y si es de otra empresa devuelven 403.
     private Alert buscarAlerta(Long id) {
-        return aS.listById(id)
+        Alert alert = aS.listById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("No existe una alerta con el id: " + id)
                 );
+
+        acceso.validarEmpresa(companyOf(alert));
+
+        return alert;
     }
 
     private Department buscarArea(Long idDepartment) {
-        return dS.listById(idDepartment)
+        Department department = dS.listById(idDepartment)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("No existe un área con el id: " + idDepartment)
                 );
+
+        acceso.validarEmpresa(department.getBranch().getCompany().getIdCompany());
+
+        return department;
     }
 
     private Equipment buscarEquipo(Long idEquipment) {
-        return eS.listById(idEquipment)
+        Equipment equipment = eS.listById(idEquipment)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("No existe un equipo con el id: " + idEquipment)
                 );
+
+        acceso.validarEmpresa(equipment.getDepartment().getBranch().getCompany().getIdCompany());
+
+        return equipment;
+    }
+
+    //Obtiene el id de la empresa de la alerta, siguiendo el camino Alerta -> Área -> Sede -> Empresa
+    private Long companyOf(Alert alert) {
+        return alert.getDepartment().getBranch().getCompany().getIdCompany();
+    }
+
+    //Cuenta las alertas de una empresa agrupadas por un campo (estado o prioridad),
+    //ordenadas de mayor a menor cantidad, igual que las consultas del repositorio
+    private List<AlertCountDTO> countByField(Long idCompany, Function<Alert, String> field) {
+        return aS.list()
+                .stream()
+                .filter(a -> companyOf(a).equals(idCompany))
+                .collect(Collectors.groupingBy(field, Collectors.counting()))
+                .entrySet()
+                .stream()
+                .map(entry -> new AlertCountDTO(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparing(AlertCountDTO::getTotalAlerts).reversed())
+                .toList();
     }
 
     // Devuelve el valor permitido con su escritura oficial (sin importar mayúsculas)

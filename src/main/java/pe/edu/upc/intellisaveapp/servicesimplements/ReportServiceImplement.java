@@ -17,6 +17,7 @@ import pe.edu.upc.intellisaveapp.dtos.ConsumptionReportDTO;
 import pe.edu.upc.intellisaveapp.dtos.ReportItemDTO;
 import pe.edu.upc.intellisaveapp.entities.ConsumptionRecord;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
+import pe.edu.upc.intellisaveapp.securities.CompanyAccess;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IReportService;
 
@@ -36,18 +37,33 @@ import java.util.stream.Collectors;
 @Service
 public class ReportServiceImplement implements IReportService {
     private final IConsumptionRecordService crS;
+    private final CompanyAccess acceso; //Para filtrar los consumos por la empresa del usuario autenticado
 
     private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    public ReportServiceImplement(IConsumptionRecordService crS) {
+    public ReportServiceImplement(IConsumptionRecordService crS, CompanyAccess acceso) {
         this.crS = crS;
+        this.acceso = acceso;
+    }
+
+    //Trae los consumos del periodo y deja solo los de la empresa del usuario autenticado.
+    //Si es admin de la plataforma (idCompany = null), deja los de todas las empresas.
+    //Lo usan el reporte JSON, el PDF (que se arma a partir del JSON) y el CSV.
+    private List<ConsumptionRecord> listRecords(LocalDateTime desde, LocalDateTime hasta, Long idBranch) {
+        Long idCompany = acceso.idEmpresaUsuario();
+
+        return crS.listHistory(idBranch, null, null, desde, hasta)
+                .stream()
+                .filter(cr -> idCompany == null
+                        || cr.getEquipment().getDepartment().getBranch().getCompany().getIdCompany().equals(idCompany))
+                .toList();
     }
 
     // ===================== REPORTE (JSON) =====================
 
     @Override
     public ConsumptionReportDTO generateConsumptionReport(LocalDateTime desde, LocalDateTime hasta, Long idBranch) {
-        List<ConsumptionRecord> registros = crS.listHistory(idBranch, null, null, desde, hasta);
+        List<ConsumptionRecord> registros = listRecords(desde, hasta, idBranch);
 
         ConsumptionReportDTO report = new ConsumptionReportDTO();
         report.setDesde(desde);
@@ -151,7 +167,7 @@ public class ReportServiceImplement implements IReportService {
 
     @Override
     public byte[] generateConsumptionReportCsv(LocalDateTime desde, LocalDateTime hasta, Long idBranch) {
-        List<ConsumptionRecord> registros = crS.listHistory(idBranch, null, null, desde, hasta);
+        List<ConsumptionRecord> registros = listRecords(desde, hasta, idBranch);
 
         // HU048 CA03: si no hay datos, no se genera el archivo
         if (registros.isEmpty()) {

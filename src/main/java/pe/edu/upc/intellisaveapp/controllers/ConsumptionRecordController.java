@@ -8,11 +8,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pe.edu.upc.intellisaveapp.dtos.ConsumptionRecordDTOInsert;
 import pe.edu.upc.intellisaveapp.dtos.ConsumptionRecordDTOList;
+import pe.edu.upc.intellisaveapp.entities.Branch;
 import pe.edu.upc.intellisaveapp.entities.ConsumptionRecord;
+import pe.edu.upc.intellisaveapp.entities.Department;
 import pe.edu.upc.intellisaveapp.entities.Equipment;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
+import pe.edu.upc.intellisaveapp.securities.CompanyAccess;
+import pe.edu.upc.intellisaveapp.servicesinterfaces.IBranchService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
+import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IEquipmentService;
 import pe.edu.upc.intellisaveapp.dtos.ElevatedConsumptionDTO;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -27,6 +32,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.net.URI;
@@ -42,37 +48,37 @@ public class ConsumptionRecordController {
     private final IEquipmentService eS;
     private final ITariffService tS;
     private final IUsersService uS;
+    private final IDepartmentService dS; //Para validar a qué empresa pertenece un área
+    private final IBranchService bS; //Para validar a qué empresa pertenece una sede
     private final ModelMapper mP;
+    private final CompanyAccess acceso; //Para filtrar y validar la empresa del usuario autenticado
 
     public ConsumptionRecordController(IConsumptionRecordService crS, IEquipmentService eS,
-                                       ITariffService tS, IUsersService uS, ModelMapper mP) {
+                                       ITariffService tS, IUsersService uS, IDepartmentService dS,
+                                       IBranchService bS, ModelMapper mP, CompanyAccess acceso) {
         this.crS = crS;
         this.eS = eS;
         this.tS = tS;
         this.uS = uS;
+        this.dS = dS;
+        this.bS = bS;
         this.mP = mP;
+        this.acceso = acceso;
     }
 
+    //Listar todos los consumos
     @GetMapping //Cualquier usuario autenticado
     public ResponseEntity<List<ConsumptionRecordDTOList>> listar() {
-        List<ConsumptionRecordDTOList> lista = crS.list()
-                .stream()
-                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
-                .toList();
-
-        return ResponseEntity.ok(lista);
+        //El admin ve todos los consumos y los demás solo los de su empresa
+        return ResponseEntity.ok(filterByCompany(crS.list()));
     }
 
     // HU09 (supervisor) y HU10 (empleado): registrar consumo
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<ConsumptionRecordDTOList> registrar(@Valid @RequestBody ConsumptionRecordDTOInsert dto) {
-        Equipment equipment = eS.listById(dto.getIdEquipment())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No existe un equipo con el id: " + dto.getIdEquipment()
-                        )
-                );
+        //Busca el equipo y valida que sea de la empresa del usuario autenticado
+        Equipment equipment = findEquipment(dto.getIdEquipment());
 
         validarAreaDelEmpleado(equipment);
         validarEquipoActivo(equipment);
@@ -109,19 +115,11 @@ public class ConsumptionRecordController {
             throw new BusinessRuleException("El id del registro de consumo es obligatorio para actualizar");
         }
 
-        ConsumptionRecord existente = crS.listById(dto.getIdConsumptionRecord())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No existe un registro de consumo con el id: " + dto.getIdConsumptionRecord()
-                        )
-                );
+        //Busca el registro y valida que sea de la empresa del usuario autenticado
+        ConsumptionRecord existente = findRecord(dto.getIdConsumptionRecord());
 
-        Equipment equipment = eS.listById(dto.getIdEquipment())
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No existe un equipo con el id: " + dto.getIdEquipment()
-                        )
-                );
+        //Busca el equipo y valida que también sea de la empresa del usuario autenticado
+        Equipment equipment = findEquipment(dto.getIdEquipment());
 
         // Si se cambia el equipo del registro, el nuevo equipo debe estar activo
         if (!equipment.getIdEquipment().equals(existente.getEquipment().getIdEquipment())) {
@@ -146,29 +144,23 @@ public class ConsumptionRecordController {
         return ResponseEntity.ok(responseDTO);
     }
 
+    //Listar consumo por su ID
     @GetMapping("/{id}") //Cualquier usuario autenticado
     public ResponseEntity<ConsumptionRecordDTOList> listarPorId(@PathVariable Long id) {
-        ConsumptionRecord cr = crS.listById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No existe un registro de consumo con el id: " + id
-                        )
-                );
+        //Busca el registro y valida que sea de la empresa del usuario autenticado
+        ConsumptionRecord cr = findRecord(id);
 
         ConsumptionRecordDTOList dto = mP.map(cr, ConsumptionRecordDTOList.class);
 
         return ResponseEntity.ok(dto);
     }
 
+    //Eliminar consumo
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> eliminar(@PathVariable Long id) {
-        ConsumptionRecord cr = crS.listById(id)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "No existe un registro de consumo con el id: " + id
-                        )
-                );
+        //Busca el registro y valida que sea de la empresa del usuario autenticado
+        ConsumptionRecord cr = findRecord(id);
         crS.delete(cr.getIdConsumptionRecord());
         return ResponseEntity.noContent().build();
     }
@@ -177,36 +169,30 @@ public class ConsumptionRecordController {
     @GetMapping("/department/{idDepartment}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorArea(@PathVariable Long idDepartment) {
-        List<ConsumptionRecordDTOList> lista = crS.listByDepartment(idDepartment)
-                .stream()
-                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
-                .toList();
+        //Validando que el área consultada sea de la empresa del usuario autenticado
+        validateDepartment(idDepartment);
 
-        return ResponseEntity.ok(lista);
+        return ResponseEntity.ok(filterByCompany(crS.listByDepartment(idDepartment)));
     }
 
     //Buscar consumo por sede
     @GetMapping("/branch/{idBranch}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorSede(@PathVariable Long idBranch) {
-        List<ConsumptionRecordDTOList> lista = crS.listByBranch(idBranch)
-                .stream()
-                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
-                .toList();
+        //Validando que la sede consultada sea de la empresa del usuario autenticado
+        validateBranch(idBranch);
 
-        return ResponseEntity.ok(lista);
+        return ResponseEntity.ok(filterByCompany(crS.listByBranch(idBranch)));
     }
 
     //Buscar consumo por equipo
     @GetMapping("/equipment/{idEquipment}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ConsumptionRecordDTOList>> listarPorEquipo(@PathVariable Long idEquipment) {
-        List<ConsumptionRecordDTOList> lista = crS.listByEquipment(idEquipment)
-                .stream()
-                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
-                .toList();
+        //Validando que el equipo consultado sea de la empresa del usuario autenticado
+        findEquipment(idEquipment);
 
-        return ResponseEntity.ok(lista);
+        return ResponseEntity.ok(filterByCompany(crS.listByEquipment(idEquipment)));
     }
 
     //Buscar consumo por rango de fecha
@@ -218,12 +204,8 @@ public class ConsumptionRecordController {
 
         validarRangoFechas(desde, hasta);
 
-        List<ConsumptionRecordDTOList> lista = crS.listByDateRange(desde, hasta)
-                .stream()
-                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
-                .toList();
-
-        return ResponseEntity.ok(lista);
+        //El admin ve los consumos de todas las empresas y los demás solo los de su empresa
+        return ResponseEntity.ok(filterByCompany(crS.listByDateRange(desde, hasta)));
     }
 
     //Historial de consumos
@@ -238,18 +220,28 @@ public class ConsumptionRecordController {
 
         validarRangoFechas(desde, hasta);
 
-        List<ConsumptionRecordDTOList> lista = crS.listHistory(idBranch, idDepartment, idEquipment, desde, hasta)
-                .stream()
-                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
-                .toList();
+        //Si se envía una sede, área o equipo, se valida que sea de la empresa del usuario autenticado
+        if (idBranch != null) {
+            validateBranch(idBranch);
+        }
+        if (idDepartment != null) {
+            validateDepartment(idDepartment);
+        }
+        if (idEquipment != null) {
+            findEquipment(idEquipment);
+        }
 
-        return ResponseEntity.ok(lista);
+        //Si no se envía ningún filtro, igual se devuelven solo los consumos de la empresa del usuario
+        return ResponseEntity.ok(filterByCompany(crS.listHistory(idBranch, idDepartment, idEquipment, desde, hasta)));
     }
 
     // Consulta nativa 1: consumo total por área de una sede
     @GetMapping("/branch/{idBranch}/by-department")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<DepartmentConsumptionDTO>> consumoPorAreaDeSede(@PathVariable Long idBranch) {
+        //Validando que la sede consultada sea de la empresa del usuario autenticado
+        validateBranch(idBranch);
+
         return ResponseEntity.ok(crS.consumptionByDepartmentOfBranch(idBranch));
     }
 
@@ -262,18 +254,55 @@ public class ConsumptionRecordController {
 
         validarRangoFechas(desde, hasta);
 
-        return ResponseEntity.ok(crS.consumptionByEquipmentCategory(desde, hasta));
+        //Obteniendo el id de la empresa del usuario autenticado. Si es admin de la plataforma, devuelve null
+        Long idCompany = acceso.idEmpresaUsuario();
+
+        //El admin usa la consulta nativa, que suma los consumos de todas las empresas
+        if (idCompany == null) {
+            return ResponseEntity.ok(crS.consumptionByEquipmentCategory(desde, hasta));
+        }
+
+        //Para los demás usuarios, se agrupan por categoría solo los consumos de su empresa
+        Map<String, List<ConsumptionRecord>> recordsByCategory = crS.listByDateRange(desde, hasta)
+                .stream()
+                .filter(cr -> companyOf(cr).equals(idCompany))
+                .collect(Collectors.groupingBy(cr -> cr.getEquipment().getCategoryEquipment()));
+
+        //Armando el DTO con los mismos datos que devuelve la consulta nativa:
+        //categoría, cantidad de equipos, cantidad de registros, total kWh y costo total
+        List<CategoryConsumptionDTO> result = recordsByCategory.entrySet()
+                .stream()
+                .map(entry -> new CategoryConsumptionDTO(
+                        entry.getKey(),
+                        entry.getValue().stream().map(cr -> cr.getEquipment().getIdEquipment()).distinct().count(),
+                        (long) entry.getValue().size(),
+                        round(entry.getValue().stream().mapToDouble(ConsumptionRecord::getKwhConsumption).sum()),
+                        round(entry.getValue().stream().mapToDouble(ConsumptionRecord::getCostTotal).sum())
+                ))
+                //Ordenando de mayor a menor consumo, igual que la consulta nativa
+                .sorted(Comparator.comparing(CategoryConsumptionDTO::getTotalKwh).reversed())
+                .toList();
+
+        return ResponseEntity.ok(result);
     }
 
+    //Promedio de consumo (kWh) de un área
     @GetMapping("/department/{idDepartment}/average")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<Double> promedioKwhPorArea(@PathVariable Long idDepartment) {
+        //Validando que el área consultada sea de la empresa del usuario autenticado
+        validateDepartment(idDepartment);
+
         return ResponseEntity.ok(crS.averageKwhByDepartment(idDepartment));
     }
 
+    //Equipos con consumo elevado en un área
     @GetMapping("/department/{idDepartment}/elevated-consumption")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ElevatedConsumptionDTO>> equiposConsumoElevado(@PathVariable Long idDepartment) {
+        //Validando que el área consultada sea de la empresa del usuario autenticado
+        validateDepartment(idDepartment);
+
         // 1. Consumo total (kWh) de cada equipo del área
         Map<Equipment, Double> totalPorEquipo = crS.listByDepartment(idDepartment)
                 .stream()
@@ -319,6 +348,82 @@ public class ConsumptionRecordController {
     }
 
     //Métodos complementarios
+
+    //Deja solo los consumos de la empresa del usuario autenticado y los convierte a DTO.
+    //Si el usuario es admin de la plataforma (idCompany = null), devuelve todos.
+    private List<ConsumptionRecordDTOList> filterByCompany(List<ConsumptionRecord> records) {
+        Long idCompany = acceso.idEmpresaUsuario();
+
+        return records
+                .stream()
+                .filter(cr -> idCompany == null || companyOf(cr).equals(idCompany))
+                .map(cr -> mP.map(cr, ConsumptionRecordDTOList.class))
+                .toList();
+    }
+
+    //Busca un registro de consumo por su id y valida que sea de la empresa del usuario autenticado.
+    //Si no existe devuelve 404, y si es de otra empresa devuelve 403.
+    private ConsumptionRecord findRecord(Long id) {
+        ConsumptionRecord cr = crS.listById(id)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe un registro de consumo con el id: " + id
+                        )
+                );
+
+        acceso.validarEmpresa(companyOf(cr));
+
+        return cr;
+    }
+
+    //Busca un equipo por su id y valida que sea de la empresa del usuario autenticado.
+    //Si no existe devuelve 404, y si es de otra empresa devuelve 403.
+    private Equipment findEquipment(Long idEquipment) {
+        Equipment equipment = eS.listById(idEquipment)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe un equipo con el id: " + idEquipment
+                        )
+                );
+
+        acceso.validarEmpresa(equipment.getDepartment().getBranch().getCompany().getIdCompany());
+
+        return equipment;
+    }
+
+    //Valida que el área exista y que sea de la empresa del usuario autenticado
+    private void validateDepartment(Long idDepartment) {
+        Department department = dS.listById(idDepartment)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe un área con el id: " + idDepartment
+                        )
+                );
+
+        acceso.validarEmpresa(department.getBranch().getCompany().getIdCompany());
+    }
+
+    //Valida que la sede exista y que sea de la empresa del usuario autenticado
+    private void validateBranch(Long idBranch) {
+        Branch branch = bS.listById(idBranch)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException(
+                                "No existe una sede con el id: " + idBranch
+                        )
+                );
+
+        acceso.validarEmpresa(branch.getCompany().getIdCompany());
+    }
+
+    //Obtiene el id de la empresa del consumo, siguiendo el camino Consumo -> Equipo -> Área -> Sede -> Empresa
+    private Long companyOf(ConsumptionRecord cr) {
+        return cr.getEquipment().getDepartment().getBranch().getCompany().getIdCompany();
+    }
+
+    //Redondea a 2 decimales, igual que el service en la consulta nativa por categoría
+    private Double round(Double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
 
     // HU10: un empleado solo puede registrar consumo de los equipos de su propia área.
     // El administrador y el supervisor pueden registrar en cualquier área.
