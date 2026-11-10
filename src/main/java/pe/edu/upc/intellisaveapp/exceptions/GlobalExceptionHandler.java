@@ -65,7 +65,9 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(error);
     }
 
-    /* Lo comento para que deje eliminar entidades relacionadas (como Company)
+    // Valida que no se pueda borrar un registro que tenga datos relacionados
+    // (por ejemplo, una sede que todavía tiene áreas); excepto para la
+    // entidad Company, que tiene un borrado en cascada manual.
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrity(
             DataIntegrityViolationException ex,
@@ -79,7 +81,6 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
-    */
 
     // 403: el usuario tiene token, pero su rol no le permite la acción
     @ExceptionHandler(AccessDeniedException.class)

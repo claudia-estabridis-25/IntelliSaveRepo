@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import pe.edu.upc.intellisaveapp.entities.Company;
 import pe.edu.upc.intellisaveapp.repositories.ICompanyRepository;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ICompanyService;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -49,7 +50,21 @@ public class CompanyServiceImplement implements ICompanyService {
     }
 
     @Override
+    //@Transactional permite que los 12 borrados sean en un solo bloque. Si uno falla, se deshacen todos.
+    //Es decir, sirve para que la empresa no se elimine parcialmente, sino por completo (con todas sus entidades relacionadas).
+    @Transactional
     public void delete(Long id) {
+        cR.deleteConsumptionRecordsByCompany(id);
+        cR.deleteAlertsByCompany(id);
+        cR.deletePredictionsByCompany(id);
+        cR.deleteCarbonFootprintsByCompany(id);
+        cR.deleteEquipmentsByCompany(id);
+        cR.deleteRolesByCompany(id);
+        cR.deleteUsersByCompany(id);
+        cR.deleteDepartmentsByCompany(id);
+        cR.deleteTariffsByCompany(id);
+        cR.deleteClimateRecordsByCompany(id);
+        cR.deleteBranchesByCompany(id);
         cR.deleteById(id);
     }
 

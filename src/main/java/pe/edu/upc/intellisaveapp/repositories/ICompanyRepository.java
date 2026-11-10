@@ -4,6 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import pe.edu.upc.intellisaveapp.entities.Company;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 // @Repository -> Pertenece a Spring Data
@@ -39,4 +41,73 @@ public interface ICompanyRepository extends JpaRepository<Company, Long> {
             nativeQuery = true)
     List<Object[]> structureByCompany();
 
+
+    // Las siguientes consultas permite borrar una empresa (borran todas las entidades relacionadas a la empresa,
+    // para evitar errores de integridad referencial).
+    // Además, las consultas están escritas en JPQL, no SQL. Se escriben con los nombres de las clases y atributos
+    // de Java (ConsumptionRecord, e.department.branch.company), no con los nombres de las tablas. Así no hay que
+    // saber cómo se llaman las columnas en PostgreSQL.
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM ConsumptionRecord c " +
+            "WHERE c.equipment.idEquipment IN (SELECT e.idEquipment FROM Equipment e WHERE e.department.branch.company.idCompany = :idCompany) " +
+            "OR c.tariff.idTariff IN (SELECT t.idTariff FROM Tariff t WHERE t.branch.company.idCompany = :idCompany)")
+    int deleteConsumptionRecordsByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM Alert a " +
+            "WHERE a.department.idDepartment IN (SELECT d.idDepartment FROM Department d WHERE d.branch.company.idCompany = :idCompany) " +
+            "OR a.equipment.idEquipment IN (SELECT e.idEquipment FROM Equipment e WHERE e.department.branch.company.idCompany = :idCompany)")
+    int deleteAlertsByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM ConsumptionPrediction p " +
+            "WHERE p.department.idDepartment IN (SELECT d.idDepartment FROM Department d WHERE d.branch.company.idCompany = :idCompany) " +
+            "OR p.equipment.idEquipment IN (SELECT e.idEquipment FROM Equipment e WHERE e.department.branch.company.idCompany = :idCompany)")
+    int deletePredictionsByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM CarbonFootprint f " +
+            "WHERE f.department.idDepartment IN (SELECT d.idDepartment FROM Department d WHERE d.branch.company.idCompany = :idCompany)")
+    int deleteCarbonFootprintsByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM Equipment e " +
+            "WHERE e.department.idDepartment IN (SELECT d.idDepartment FROM Department d WHERE d.branch.company.idCompany = :idCompany)")
+    int deleteEquipmentsByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM Role r " +
+            "WHERE r.user.idUser IN (SELECT u.idUser FROM Users u WHERE u.department.branch.company.idCompany = :idCompany)")
+    int deleteRolesByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM Users u " +
+            "WHERE u.department.idDepartment IN (SELECT d.idDepartment FROM Department d WHERE d.branch.company.idCompany = :idCompany)")
+    int deleteUsersByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM Department d " +
+            "WHERE d.branch.idBranch IN (SELECT b.idBranch FROM Branch b WHERE b.company.idCompany = :idCompany)")
+    int deleteDepartmentsByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM Tariff t " +
+            "WHERE t.branch.idBranch IN (SELECT b.idBranch FROM Branch b WHERE b.company.idCompany = :idCompany)")
+    int deleteTariffsByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM ClimateRecord c " +
+            "WHERE c.branch.idBranch IN (SELECT b.idBranch FROM Branch b WHERE b.company.idCompany = :idCompany)")
+    int deleteClimateRecordsByCompany(@Param("idCompany") Long idCompany);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("DELETE FROM Branch b WHERE b.company.idCompany = :idCompany")
+    int deleteBranchesByCompany(@Param("idCompany") Long idCompany);
 }
+// - @Modifying: Le avisa a Spring que la consulta cambia datos (DELETE o UPDATE) y no es un SELECT.
+// Sin esto, Spring da error al ejecutarla.
+// - <flushAutomatically = true>: Antes de borrar, guarda en la base cualquier cambio pendiente.
+// - <clearAutomatically = true>: Después de borrar, limpia la memoria de JPA para que no queden
+// objetos de registros que ya no existen.
+// - Los metodos son de tipo int, porque devuelven cuántas filas borró. No lo usamos, pero
+// sirve si se imprimirlo para probar.
