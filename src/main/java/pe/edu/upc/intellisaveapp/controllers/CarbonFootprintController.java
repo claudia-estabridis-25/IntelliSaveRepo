@@ -217,7 +217,14 @@ public class CarbonFootprintController {
 
         LocalDate fecha = (calculationDate != null) ? calculationDate : LocalDate.now();
 
-        List<CarbonFootprintDTOList> lista = cfS.calculateAll(dS.list(), timePeriod, fecha, emissionFactor)
+        Long idCompany = acceso.idEmpresaUsuario();
+        List<Department> departamentos = dS.list()
+                .stream()
+                .filter(department -> idCompany == null ||
+                        department.getBranch().getCompany().getIdCompany().equals(idCompany))
+                .toList();
+
+        List<CarbonFootprintDTOList> lista = cfS.calculateAll(departamentos, timePeriod, fecha, emissionFactor)
                 .stream()
                 .map(this::toDTO)
                 .toList();
@@ -258,24 +265,33 @@ public class CarbonFootprintController {
     // ===================== MÉTODOS DE APOYO ===========================
 
     private CarbonFootprint buscarHuella(Long id) {
-        return cfS.listById(id)
+        CarbonFootprint footprint = cfS.listById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("No existe una huella de carbono con el id: " + id)
                 );
+
+        acceso.validarEmpresa(footprint.getDepartment().getBranch().getCompany().getIdCompany());
+        return footprint;
     }
 
     private Department buscarArea(Long idDepartment) {
-        return dS.listById(idDepartment)
+        Department department = dS.listById(idDepartment)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("No existe un área con el id: " + idDepartment)
                 );
+
+        acceso.validarEmpresa(department.getBranch().getCompany().getIdCompany());
+        return department;
+
     }
 
     private void buscarSede(Long idBranch) {
-        bS.listById(idBranch)
+        Branch branch = bS.listById(idBranch)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("No existe una sede con el id: " + idBranch)
                 );
+
+        acceso.validarEmpresa(branch.getCompany().getIdCompany());
     }
 
     private Set<Long> sedesVisibles() {
