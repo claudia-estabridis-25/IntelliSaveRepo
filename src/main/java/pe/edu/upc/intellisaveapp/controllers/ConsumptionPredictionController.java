@@ -11,6 +11,7 @@ import pe.edu.upc.intellisaveapp.entities.Department;
 import pe.edu.upc.intellisaveapp.entities.Equipment;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
+import pe.edu.upc.intellisaveapp.securities.CompanyAccess;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionPredictionService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IEquipmentService;
@@ -20,6 +21,8 @@ import pe.edu.upc.intellisaveapp.dtos.PredictionDepartmentDTO;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/predictions")
@@ -27,13 +30,15 @@ public class ConsumptionPredictionController {
     private final IConsumptionPredictionService pS;
     private final IDepartmentService dS;
     private final IEquipmentService eS;
+    private final CompanyAccess acceso;
 
     public ConsumptionPredictionController(IConsumptionPredictionService pS,
                                            IDepartmentService dS,
-                                           IEquipmentService eS) {
+                                           IEquipmentService eS, CompanyAccess acceso) {
         this.pS = pS;
         this.dS = dS;
         this.eS = eS;
+        this.acceso = acceso;
     }
 
     // HU013: generar la predicción de un área o de un equipo
@@ -59,7 +64,10 @@ public class ConsumptionPredictionController {
                     .orElseThrow(() ->
                             new ResourceNotFoundException("No existe un equipo con el id: " + dto.getIdEquipment())
                     );
+
             department = equipment.getDepartment();
+
+            acceso.validarEmpresa(department.getBranch().getCompany().getIdCompany());
 
             if (dto.getIdDepartment() != null && !dto.getIdDepartment().equals(department.getIdDepartment())) {
                 throw new BusinessRuleException("El equipo no pertenece al área indicada");
@@ -70,6 +78,7 @@ public class ConsumptionPredictionController {
                     .orElseThrow(() ->
                             new ResourceNotFoundException("No existe un área con el id: " + dto.getIdDepartment())
                     );
+            acceso.validarEmpresa(department.getBranch().getCompany().getIdCompany());
         } else {
             throw new BusinessRuleException("Debe indicar un área o un equipo para generar la predicción");
         }
@@ -85,7 +94,23 @@ public class ConsumptionPredictionController {
             @RequestParam(required = false) Long idDepartment,
             @RequestParam(required = false) Long idEquipment,
             @RequestParam(required = false) String status) {
-        return ResponseEntity.ok(pS.list(idDepartment, idEquipment, status));
+
+        if (idDepartment != null) {
+            validarArea(idDepartment);
+        }
+        if (idEquipment != null) {
+            Equipment equipment = eS.listById(idEquipment)
+                    .orElseThrow(() ->
+                            new ResourceNotFoundException("No existe un equipo con el id: " + idEquipment)
+                    );
+            acceso.validarEmpresa(equipment.getDepartment().getBranch().getCompany().getIdCompany());
+        }
+        Set<Long> areas = areasVisibles();
+        List<PredictionDTOList> lista = pS.list(idDepartment, idEquipment, status)
+                .stream()
+                .filter(fila -> areas == null || areas.contains(fila.getIdDepartment()))
+                .toList();
+        return ResponseEntity.ok(lista);
     }
 
     // Detalle de una predicción
@@ -94,6 +119,8 @@ public class ConsumptionPredictionController {
     public ResponseEntity<PredictionDTOList> listarPorId(@PathVariable Long id) {
         PredictionDTOList dto = pS.listById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("No existe una predicción con el id: " + id));
+        validarArea(dto.getIdDepartment());
+
         return ResponseEntity.ok(dto);
     }
 
@@ -101,13 +128,50 @@ public class ConsumptionPredictionController {
     @GetMapping("/by-department")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<PredictionDepartmentDTO>> prediccionesPorArea() {
-        return ResponseEntity.ok(pS.predictionsByDepartment());
+        Set<Long> areas = areasVisibles();
+
+        List<PredictionDepartmentDTO> lista = pS.predictionsByDepartment()
+                .stream()
+                .filter(fila -> areas == null || areas.contains(fila.getIdDepartment()))
+                .toList();
+        return ResponseEntity.ok(lista);
     }
 
     // HU055: evaluar a mano las predicciones terminadas
     @PostMapping("/evaluate")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<PredictionDTOList>> evaluar() {
-        return ResponseEntity.ok(pS.evaluateFinishedPredictions());
+        Set<Long> areas = areasVisibles();
+
+        List<PredictionDTOList> lista = pS.evaluateFinishedPredictions()
+                .stream()
+                .filter(fila -> areas == null || areas.contains(fila.getIdDepartment()))
+                .toList();
+
+        return ResponseEntity.ok(lista);
+    }
+
+    // ================================ MÉTODOS DE APOYO ====================================
+    private void validarArea(Long idDepartment) {
+        Department department = dS.listById(idDepartment)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("No existe un área con el id: " + idDepartment)
+                );
+
+        acceso.validarEmpresa(department.getBranch().getCompany().getIdCompany());
+    }
+
+    private Set<Long> areasVisibles() {
+        Long idCompany = acceso.idEmpresaUsuario();
+
+        if (idCompany == null) {
+            return null;
+        }
+
+        return dS.list()
+                .stream()
+                .filter(department -> department.getBranch().getCompany().getIdCompany().equals(idCompany))
+                .map(Department::getIdDepartment)
+                .collect(Collectors.toSet());
     }
 }
