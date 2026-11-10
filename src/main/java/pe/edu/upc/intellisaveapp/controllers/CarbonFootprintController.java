@@ -14,10 +14,12 @@ import pe.edu.upc.intellisaveapp.dtos.CarbonFootprintComparisonDTO;
 import pe.edu.upc.intellisaveapp.dtos.CarbonFootprintDTOInsert;
 import pe.edu.upc.intellisaveapp.dtos.CarbonFootprintDTOList;
 import pe.edu.upc.intellisaveapp.dtos.DepartmentEmissionDTO;
+import pe.edu.upc.intellisaveapp.entities.Branch;
 import pe.edu.upc.intellisaveapp.entities.CarbonFootprint;
 import pe.edu.upc.intellisaveapp.entities.Department;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
 import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
+import pe.edu.upc.intellisaveapp.securities.CompanyAccess;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IBranchService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.ICarbonFootprintService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
@@ -26,6 +28,8 @@ import java.net.URI;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/carbon-footprints")
@@ -33,19 +37,25 @@ public class CarbonFootprintController {
     private final ICarbonFootprintService cfS;
     private final IDepartmentService dS;
     private final IBranchService bS;
+    private final CompanyAccess acceso;
 
-    public CarbonFootprintController(ICarbonFootprintService cfS, IDepartmentService dS, IBranchService bS) {
+    public CarbonFootprintController(ICarbonFootprintService cfS, IDepartmentService dS, IBranchService bS, CompanyAccess acceso) {
         this.cfS = cfS;
         this.dS = dS;
         this.bS = bS;
+        this.acceso = acceso;
     }
 
     // HU20: listar huellas de carbono, con filtro opcional por periodo (más recientes primero)
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<CarbonFootprintDTOList>> listar(@RequestParam(required = false) String timePeriod) {
+        Long idCompany = acceso.idEmpresaUsuario();
+
         List<CarbonFootprintDTOList> lista = cfS.list()
                 .stream()
+                .filter(cf -> idCompany == null ||
+                        cf.getDepartment().getBranch().getCompany().getIdCompany().equals(idCompany))
                 .filter(cf -> timePeriod == null || timePeriod.equalsIgnoreCase(cf.getTimePeriod()))
                 .sorted(Comparator.comparing(CarbonFootprint::getCalculationDate).reversed())
                 .map(this::toDTO)
@@ -107,7 +117,14 @@ public class CarbonFootprintController {
     @GetMapping("/by-branch")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<BranchEmissionDTO>> emisionesPorSede() {
-        return ResponseEntity.ok(cfS.emissionsByBranch());
+        Set<Long> sedes = sedesVisibles();
+
+        List<BranchEmissionDTO> lista = cfS.emissionsByBranch()
+                .stream()
+                .filter(fila -> sedes == null || sedes.contains(fila.getIdBranch()))
+                .toList();
+        return ResponseEntity.ok(lista);
+
     }
 
     // Consulta con JOIN: emisiones totales de CO2 por área (opcional: solo las áreas de una sede)
@@ -115,10 +132,19 @@ public class CarbonFootprintController {
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<DepartmentEmissionDTO>> emisionesPorArea(
             @RequestParam(required = false) Long idBranch) {
+        //Para que si no existe la sede relacionada al área en consulta, o si la sede pertenece a otra empresa,
+        //entonces pueda devolver un error 404 o un error 403 (respectivamente), en vez de una lista vacía.
         if (idBranch != null) {
             buscarSede(idBranch);
         }
-        return ResponseEntity.ok(cfS.emissionsByDepartment(idBranch));
+
+        Set<Long> areas = areasVisibles();
+
+        List<DepartmentEmissionDTO> lista = cfS.emissionsByDepartment(idBranch)
+                .stream()
+                .filter(fila -> areas == null || areas.contains(fila.getIdDepartment()))
+                .toList();
+        return ResponseEntity.ok(lista);
     }
 
     // Detalle de una huella de carbono, Listar por id
@@ -229,7 +255,7 @@ public class CarbonFootprintController {
         return ResponseEntity.noContent().build();
     }
 
-    // ===================== MÉTODOS DE APOYO =====================
+    // ===================== MÉTODOS DE APOYO ===========================
 
     private CarbonFootprint buscarHuella(Long id) {
         return cfS.listById(id)
@@ -251,6 +277,30 @@ public class CarbonFootprintController {
                         new ResourceNotFoundException("No existe una sede con el id: " + idBranch)
                 );
     }
+
+    private Set<Long> sedesVisibles() {
+        Long idCompany = acceso.idEmpresaUsuario();
+        if (idCompany == null) {
+            return null;
+        }
+        return bS.listByCompany(idCompany)
+                .stream()
+                .map(Branch::getIdBranch)
+                .collect(Collectors.toSet());
+    }
+
+    private Set<Long> areasVisibles() {
+        Long idCompany = acceso.idEmpresaUsuario();
+        if (idCompany == null) {
+            return null;
+        }
+        return dS.list()
+                .stream()
+                .filter(department -> department.getBranch().getCompany().getIdCompany().equals(idCompany))
+                .map(Department::getIdDepartment)
+                .collect(Collectors.toSet());
+    }
+
 
     private CarbonFootprintDTOList toDTO(CarbonFootprint cf) {
         CarbonFootprintDTOList dto = new CarbonFootprintDTOList();
