@@ -41,7 +41,7 @@ public class ScheduledTasks {
         this.dS = dS;
     }
 
-    // HU17: consultar automáticamente el clima de todas las sedes (cada hora, en el minuto 0)
+    // HU17: Consultar automáticamente el clima de todas las sedes (cada hora, en el minuto 0)
     @Scheduled(cron = "0 0 * * * *", zone = "America/Lima")
     public void actualizarClimaSedes() {
         ClimateRefreshResultDTO resultado = cS.refreshAllBranches();
@@ -49,7 +49,7 @@ public class ScheduledTasks {
                 resultado.getSavedRecords(), resultado.getTotalBranches(), resultado.getErrors());
     }
 
-    // HU21: detectar automáticamente consumos anormales de la última semana (todos los días a las 23:00)
+    // HU21: Detectar automáticamente consumos anormales de la última semana (todos los días a las 23:00)
     @Scheduled(cron = "0 0 23 * * *", zone = "America/Lima")
     public void detectarConsumosAnormales() {
         LocalDateTime hasta = LocalDateTime.now();
