@@ -120,7 +120,7 @@ public class ClimateRecordServiceImplement implements IClimateRecordService {
                 fetchAndSave(sede);
                 guardados++;
             } catch (RuntimeException e) {
-                errores.add(sede.getNameBranch() + ": " + e.getMessage());
+                errores.add(sede.getIdBranch() + " - " + sede.getNameBranch() + ": " + e.getMessage());
             }
         }
 

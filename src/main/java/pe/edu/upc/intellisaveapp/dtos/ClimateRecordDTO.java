@@ -22,6 +22,11 @@ public class ClimateRecordDTO {
     @NotNull(message = "El id de la sede relacionada es obligatorio")
     private Long idBranch;
 
+    //Datos de solo lectura: se llenan al devolver el registro, para mostrar la sede y su empresa sin otra consulta
+    private String nameBranch;
+    private Long idCompany;
+    private String nameCompany;
+
 
     public Long getIdClimate() {
         return idClimate;
@@ -85,5 +90,29 @@ public class ClimateRecordDTO {
 
     public void setIdBranch(Long idBranch) {
         this.idBranch = idBranch;
+    }
+
+    public String getNameBranch() {
+        return nameBranch;
+    }
+
+    public void setNameBranch(String nameBranch) {
+        this.nameBranch = nameBranch;
+    }
+
+    public Long getIdCompany() {
+        return idCompany;
+    }
+
+    public void setIdCompany(Long idCompany) {
+        this.idCompany = idCompany;
+    }
+
+    public String getNameCompany() {
+        return nameCompany;
+    }
+
+    public void setNameCompany(String nameCompany) {
+        this.nameCompany = nameCompany;
     }
 }

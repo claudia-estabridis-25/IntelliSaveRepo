@@ -47,7 +47,7 @@ public class ClimateRecordController {
                 .stream()
                 .filter(climateRecord -> idCompany == null ||
                         climateRecord.getBranch().getCompany().getIdCompany().equals(idCompany))
-                .map(climateRecord -> modelMapper.map(climateRecord, ClimateRecordDTO.class))
+                .map(this::toDTO)
                 .toList();
 
         return ResponseEntity.ok(lista);
@@ -63,10 +63,10 @@ public class ClimateRecordController {
                 );
         acceso.validarEmpresa(c.getBranch().getCompany().getIdCompany());
 
-        return ResponseEntity.ok(modelMapper.map(c, ClimateRecordDTO.class));
+        return ResponseEntity.ok(toDTO(c));
     }
 
-    //HU18: historial climático de una sede (se actualiza solo si el último registro tiene más de 1 hora)
+    //HU18: Historial climático de una sede (se actualiza solo si el último registro tiene más de 1 hora)
     @GetMapping("/branch/{idBranch}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ClimateRecordDTO>> listByBranch(@PathVariable Long idBranch) {
@@ -76,7 +76,7 @@ public class ClimateRecordController {
         return ResponseEntity.ok(convertir(cS.listByBranch(idBranch)));
     }
 
-    //HU18: historial climático de un área (es el de la sede a la que pertenece el área)
+    //HU18: Historial climático de un área (es el de la sede a la que pertenece el área)
     @GetMapping("/department/{idDepartment}")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<List<ClimateRecordDTO>> listByDepartment(@PathVariable Long idDepartment) {
@@ -92,7 +92,7 @@ public class ClimateRecordController {
         return ResponseEntity.ok(convertir(cS.listByBranch(branch.getIdBranch())));
     }
 
-    //HU17: consultar la API y guardar el clima actual de una sede
+    //HU17: Consultar la API y guardar el clima actual de una sede
     @PostMapping("/branch/{idBranch}/fetch")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
     public ResponseEntity<ClimateRecordDTO> fetchBranch(@PathVariable Long idBranch) {
@@ -112,10 +112,10 @@ public class ClimateRecordController {
 
         // Responde 201 Created. Pone la URL en el header Location y en el cuerpo
         // devuelve el registro como ClimateRecordDTO.
-        return ResponseEntity.created(location).body(modelMapper.map(record, ClimateRecordDTO.class));
+        return ResponseEntity.created(location).body(toDTO(record));
     }
 
-    //HU17 (T11): consultar la API para todas las sedes; si ocurre una falla, continúa con las demás.
+    //HU17 (T11): Consultar la API para todas las sedes; si ocurre una falla, continúa con las demás.
     //Este endpoint actualiza el clima de todas las sedes del sistema, de forma automática cada cada hora.
     //Se deja esta opción manual únicamente para el admin de la plataforma.
     @PostMapping("/refresh")
@@ -140,7 +140,18 @@ public class ClimateRecordController {
 
     private List<ClimateRecordDTO> convertir(List<ClimateRecord> registros) {
         return registros.stream()
-                .map(climateRecord -> modelMapper.map(climateRecord, ClimateRecordDTO.class))
+                //this::toDTO es una forma corta de escribir climateRecord -> toDTO(climateRecord)
+                .map(this::toDTO)
                 .toList();
+    }
+
+    private ClimateRecordDTO toDTO(ClimateRecord climateRecord) {
+        ClimateRecordDTO dto = modelMapper.map(climateRecord, ClimateRecordDTO.class);
+        Branch branch = climateRecord.getBranch();
+        dto.setIdBranch(branch.getIdBranch());
+        dto.setNameBranch(branch.getNameBranch());
+        dto.setIdCompany(branch.getCompany().getIdCompany());
+        dto.setNameCompany(branch.getCompany().getComercialNamecompany());
+        return dto;
     }
 }
