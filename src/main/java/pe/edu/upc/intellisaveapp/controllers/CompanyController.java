@@ -114,7 +114,7 @@ public class CompanyController {
 
     //Listar empresa por su ID
     @GetMapping("/{id}") //Cualquier usuario autenticado
-    public ResponseEntity<CompanyDTOList> listarPorId(@PathVariable Long id) {
+    public ResponseEntity<CompanyDTOInsert> listarPorId(@PathVariable Long id) {
         Company company = cS.listById(id)
                 .orElseThrow(() ->
                         new ResourceNotFoundException(
@@ -125,7 +125,8 @@ public class CompanyController {
         //Validando que el usuario autenticado pertenezca a la empresa que está intentando consultar
         acceso.validarEmpresa(company.getIdCompany());
 
-        CompanyDTOList dto = mP.map(company, CompanyDTOList.class);
+        //Devuelve todos los datos de la empresa para poder llenar el formulario de edición en el frontend
+        CompanyDTOInsert dto = mP.map(company, CompanyDTOInsert.class);
 
         return ResponseEntity.ok(dto);
     }
@@ -219,8 +220,8 @@ public class CompanyController {
         //Ejm: fila = [1, "MiEmpresa SAC", 5, 16]
         List<CompanyStructureDTO> lista = cS.structureByCompany()
                 .stream()
-        //Validando que el id de la empresa de la consulta sea igual al id de empresa del usuario autenticado.
-        //Si el usuario no tiene id de empresa, es admin, y puede ver todas las empresas, por eso se deja pasar el null.
+                //Validando que el id de la empresa de la consulta sea igual al id de empresa del usuario autenticado.
+                //Si el usuario no tiene id de empresa, es admin, y puede ver todas las empresas, por eso se deja pasar el null.
                 .filter(fila -> idEmpresa == null || ((Number) fila[0]).longValue() == idEmpresa)
                 .map(fila -> new CompanyStructureDTO(
                         ((Number) fila[0]).longValue(), //idCompany
