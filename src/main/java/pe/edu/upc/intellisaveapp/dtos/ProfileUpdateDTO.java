@@ -12,6 +12,9 @@ public class ProfileUpdateDTO {
     @Size(min = 6, max = 60, message = "La nueva contraseña debe tener entre 6 y 60 caracteres")
     private String newPassword;
 
+    //Contraseña actual: se pide solo cuando el usuario quiere cambiar su contraseña
+    private String currentPassword;
+
     public String getTelephoneUser() {
         return telephoneUser;
     }
@@ -34,5 +37,13 @@ public class ProfileUpdateDTO {
 
     public void setNewPassword(String newPassword) {
         this.newPassword = newPassword;
+    }
+
+    public String getCurrentPassword() {
+        return currentPassword;
+    }
+
+    public void setCurrentPassword(String currentPassword) {
+        this.currentPassword = currentPassword;
     }
 }

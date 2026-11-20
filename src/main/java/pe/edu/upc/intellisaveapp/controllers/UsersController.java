@@ -211,6 +211,12 @@ public class UsersController {
             user.setSecondName(dto.getSecondName());
         }
         if (dto.getNewPassword() != null && !dto.getNewPassword().isBlank()) {
+            //Para cambiar la contraseña se debe ingresar también la contraseña la actual,
+            //para que así nadie la cambia desde una sesión abierta ajena.
+            if (dto.getCurrentPassword() == null
+                    || !passwordEncoder.matches(dto.getCurrentPassword(), user.getPasswordUser())) {
+                throw new BusinessRuleException("La contraseña actual no es correcta");
+            }
             user.setPasswordUser(passwordEncoder.encode(dto.getNewPassword()));
         }
 
