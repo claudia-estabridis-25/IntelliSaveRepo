@@ -13,6 +13,7 @@ public interface ITariffService {
     public Optional<Tariff> findCurrentByBranch(Long idBranch, LocalDate fecha);
     public void insert(Tariff t);
     public void update(Tariff t);
+    public void delete(Long id);
     public Optional<Tariff> listById(Long id);
     public List<TariffSupplierDTO> tariffsBySupplier();
 }

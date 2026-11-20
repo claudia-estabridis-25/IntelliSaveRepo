@@ -15,6 +15,7 @@ public interface IConsumptionPredictionService {
                                         LocalDate inicio, LocalDate fin);
     public List<PredictionDTOList> list(Long idDepartment, Long idEquipment, String status);
     public Optional<PredictionDTOList> listById(Long id);
+    public void delete(Long id);
     public List<PredictionDTOList> evaluateFinishedPredictions();
     public List<PredictionDepartmentDTO> predictionsByDepartment();
 }

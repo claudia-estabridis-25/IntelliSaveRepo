@@ -124,6 +124,17 @@ public class ConsumptionPredictionController {
         return ResponseEntity.ok(dto);
     }
 
+    //Eliminar una predicción del historial
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        PredictionDTOList dto = pS.listById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe una predicción con el id: " + id));
+        validarArea(dto.getIdDepartment());
+        pS.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+
     // Consulta nativa con JOIN: predicciones por área y estado
     @GetMapping("/by-department")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")

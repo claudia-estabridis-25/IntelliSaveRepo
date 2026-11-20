@@ -136,6 +136,15 @@ public class TariffController {
         return ResponseEntity.ok(toDTO(tariff));
     }
 
+    //Eliminar tarifa. Si ya tiene consumos registrados con ella, la base de datos no lo permite y responde 409
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> eliminar(@PathVariable Long id) {
+        Tariff tariff = buscarTarifa(id);
+        tS.delete(tariff.getIdTariff());
+        return ResponseEntity.noContent().build();
+    }
+
     // Consulta nativa con JOIN: cantidad de tarifas y costo promedio por proveedor y sede
     @GetMapping("/by-supplier")
     @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
