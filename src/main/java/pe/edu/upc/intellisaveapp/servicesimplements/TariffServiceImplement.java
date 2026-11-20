@@ -47,6 +47,11 @@ public class TariffServiceImplement implements ITariffService {
     }
 
     @Override
+    public void delete(Long id) {
+        tR.deleteById(id);
+    }
+
+    @Override
     public Optional<Tariff> listById(Long id) {
         return tR.findById(id);
     }

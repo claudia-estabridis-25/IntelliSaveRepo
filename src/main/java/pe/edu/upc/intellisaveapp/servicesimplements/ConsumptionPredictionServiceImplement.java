@@ -174,6 +174,11 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
         return pR.findById(id).map(this::toDTO);
     }
 
+    @Override
+    public void delete(Long id) {
+        pR.deleteById(id);
+    }
+
     // ===================== HU055: COMPARAR CON EL CONSUMO REAL =====================
 
     @Override
