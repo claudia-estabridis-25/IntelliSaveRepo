@@ -6,9 +6,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.net.http.HttpClient;
 import java.time.Duration;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -20,11 +22,14 @@ public class GeminiApiClient {
     private final RestClient restClient;
     private final String apiKey;
     private final String model;
+    private final String fallbackModel;
 
     public GeminiApiClient(@Value("${gemini.api.key:}") String apiKey,
-                           @Value("${gemini.model:gemini-3.6-flash}") String model) {
+                           @Value("${gemini.model:gemini-3.6-flash}") String model,
+                           @Value("${gemini.fallback-model:gemini-3.5-flash-lite}") String fallbackModel) {
         this.apiKey = apiKey;
         this.model = model;
+        this.fallbackModel = fallbackModel;
 
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
@@ -49,8 +54,26 @@ public class GeminiApiClient {
                 new GenerationConfig(0.4)
         );
 
+        RestClientResponseException ultimoError = null;
+        for (String modelo : new LinkedHashSet<>(List.of(model, fallbackModel))) {
+            for (int intento = 1; intento <= 2; intento++) {
+                try {
+                    return llamar(modelo, request);
+                } catch (RestClientResponseException e) {
+                    if (!esTemporal(e)) {
+                        throw e;
+                    }
+                    ultimoError = e;
+                    esperar(intento * 1500L);
+                }
+            }
+        }
+        throw ultimoError;
+    }
+
+    private String llamar(String modelo, GeminiRequest request) {
         GeminiResponse response = restClient.post()
-                .uri(URL, model)
+                .uri(URL, modelo)
                 .header("x-goog-api-key", apiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(request)
@@ -76,6 +99,19 @@ public class GeminiApiClient {
             throw new IllegalStateException("La respuesta de Gemini llegó vacía");
         }
         return text;
+    }
+
+    private boolean esTemporal(RestClientResponseException e) {
+        int codigo = e.getStatusCode().value();
+        return codigo == 429 || codigo == 500 || codigo == 503;
+    }
+
+    private void esperar(long milisegundos) {
+        try {
+            Thread.sleep(milisegundos);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public record GeminiRequest(List<Content> contents, GenerationConfig generationConfig) {
