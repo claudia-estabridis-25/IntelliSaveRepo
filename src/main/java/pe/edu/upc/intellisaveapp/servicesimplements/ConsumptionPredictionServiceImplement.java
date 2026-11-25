@@ -2,6 +2,7 @@ package pe.edu.upc.intellisaveapp.servicesimplements;
 
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import pe.edu.upc.intellisaveapp.clients.GeminiApiClient;
 import pe.edu.upc.intellisaveapp.dtos.DailyConsumptionPointDTO;
 import pe.edu.upc.intellisaveapp.dtos.PredictionDTOList;
 import pe.edu.upc.intellisaveapp.dtos.PredictionResultDTO;
@@ -11,6 +12,7 @@ import pe.edu.upc.intellisaveapp.entities.Department;
 import pe.edu.upc.intellisaveapp.entities.Equipment;
 import pe.edu.upc.intellisaveapp.entities.Tariff;
 import pe.edu.upc.intellisaveapp.exceptions.BusinessRuleException;
+import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.repositories.IConsumptionPredictionRepository;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionPredictionService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IConsumptionRecordService;
@@ -21,7 +23,9 @@ import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -39,16 +43,23 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
     private static final String CUMPLIDA = "Cumplida";
     private static final String ERRADA = "Errada";
 
+    private static final int MAX_ANALISIS = 1000;
+    private static final int MAX_RECOMENDACIONES = 2000;
+    private static final int MAX_EQUIPOS_EN_PROMPT = 10;
+
     private final IConsumptionPredictionRepository pR;
     private final IConsumptionRecordService crS;
     private final ITariffService tS;
+    private final GeminiApiClient gemini;
 
     public ConsumptionPredictionServiceImplement(IConsumptionPredictionRepository pR,
                                                  IConsumptionRecordService crS,
-                                                 ITariffService tS) {
+                                                 ITariffService tS,
+                                                 GeminiApiClient gemini) {
         this.pR = pR;
         this.crS = crS;
         this.tS = tS;
+        this.gemini = gemini;
     }
 
     // ===================== HU013: GENERAR PREDICCIÓN =====================
@@ -138,6 +149,7 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
                 + " basada en " + consumoPorDia.size() + " días con consumo");
         p.setStatusPrediction(EN_CURSO);
         pR.save(p);
+        analizarConIA(p);
 
         // 7. Respuesta con los datos del gráfico (HU013 CA03)
         PredictionResultDTO resultado = new PredictionResultDTO();
@@ -146,6 +158,20 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
         resultado.setHistorical(historico);
         resultado.setEstimated(estimado);
         return resultado;
+    }
+
+    @Override
+    public PredictionDTOList analyze(Long id) {
+        ConsumptionPrediction p = pR.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe una predicción con el id: " + id));
+
+        if (!gemini.isConfigured()) {
+            throw new BusinessRuleException("El análisis con IA no está configurado: falta la variable GEMINI_API_KEY");
+        }
+        if (!analizarConIA(p)) {
+            throw new BusinessRuleException("No se pudo generar el análisis con IA. Intenta de nuevo en unos minutos");
+        }
+        return toDTO(p);
     }
 
     // ===================== HU051: HISTORIAL =====================
@@ -263,6 +289,11 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
         dto.setDescriptionPrediction(p.getDescriptionPrediction());
         dto.setStatusPrediction(p.getStatusPrediction());
 
+        dto.setAiAnalysis(p.getAiAnalysisPrediction());
+        dto.setAiRecommendations(p.getAiRecommendationsPrediction() == null
+                ? List.of()
+                : List.of(p.getAiRecommendationsPrediction().split("\n")));
+
         // Si ya fue evaluada, se muestra el consumo real y la desviación
         if (!EN_CURSO.equals(p.getStatusPrediction())) {
             double real = consumoReal(p);
@@ -272,6 +303,189 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
             }
         }
         return dto;
+    }
+
+    private boolean analizarConIA(ConsumptionPrediction p) {
+        if (!gemini.isConfigured()) {
+            return false;
+        }
+        try {
+            String respuesta = gemini.generateText(construirPrompt(p));
+            String analisis = extraerAnalisis(respuesta);
+            List<String> recomendaciones = extraerRecomendaciones(respuesta);
+            if (analisis.isBlank() && recomendaciones.isEmpty()) {
+                return false;
+            }
+            p.setAiAnalysisPrediction(recortar(analisis, MAX_ANALISIS));
+            p.setAiRecommendationsPrediction(recortar(String.join("\n", recomendaciones), MAX_RECOMENDACIONES));
+            pR.save(p);
+            return true;
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    private String construirPrompt(ConsumptionPrediction p) {
+        Department department = p.getDepartment();
+        Equipment equipment = p.getEquipment();
+        Long idEquipment = (equipment != null) ? equipment.getIdEquipment() : null;
+        LocalDate inicio = p.getInitialDatePrediction();
+        LocalDate finHistorial = inicio.minusDays(1);
+        LocalDate inicioHistorial = inicio.minusDays(DIAS_HISTORIAL);
+
+        List<ConsumptionRecord> registros = crS.listHistory(null, department.getIdDepartment(), idEquipment,
+                inicioHistorial.atStartOfDay(), finHistorial.atTime(23, 59, 59));
+
+        Map<LocalDate, Double> porDia = registros.stream()
+                .collect(Collectors.groupingBy(
+                        cr -> cr.getDateTimeRecord().toLocalDate(),
+                        Collectors.summingDouble(ConsumptionRecord::getKwhConsumption)
+                ));
+        double totalHistorial = porDia.values().stream().mapToDouble(Double::doubleValue).sum();
+        double promedioDiaConDatos = porDia.isEmpty() ? 0 : totalHistorial / porDia.size();
+        double ultimaSemana = sumarEntre(porDia, inicio.minusDays(7), finHistorial);
+        double semanaAnterior = sumarEntre(porDia, inicio.minusDays(14), inicio.minusDays(8));
+        double tendencia = pendienteDiaria(porDia, finHistorial);
+        long diasPeriodo = ChronoUnit.DAYS.between(inicio, p.getEndDatePrediction()) + 1;
+        double tarifa = p.getKwhPrediction() > 0 ? p.getCostPrediction() / p.getKwhPrediction() : 0;
+
+        StringBuilder equipos = new StringBuilder();
+        registros.stream()
+                .collect(Collectors.groupingBy(ConsumptionRecord::getEquipment))
+                .entrySet()
+                .stream()
+                .sorted(Comparator.comparingDouble((Map.Entry<Equipment, List<ConsumptionRecord>> e) ->
+                        e.getValue().stream().mapToDouble(ConsumptionRecord::getKwhConsumption).sum()).reversed())
+                .limit(MAX_EQUIPOS_EN_PROMPT)
+                .forEach(e -> {
+                    Equipment eq = e.getKey();
+                    double kwh = e.getValue().stream().mapToDouble(ConsumptionRecord::getKwhConsumption).sum();
+                    double horas = e.getValue().stream().mapToDouble(ConsumptionRecord::getHoursOfUse).sum();
+                    equipos.append(String.format(Locale.US,
+                            "- %s (categoría %s, %.0f W, estado %s): %.2f kWh en %d registros, %.1f horas en total, %.1f horas por registro en promedio%n",
+                            eq.getNameEquipment(), eq.getCategoryEquipment(), eq.getWattPowerEquipment(),
+                            eq.getStatusEquipment(), kwh, e.getValue().size(), horas, horas / e.getValue().size()));
+                });
+
+        String objetivo = (equipment != null)
+                ? "el equipo " + equipment.getNameEquipment() + " del área " + department.getNameDepartment()
+                : "toda el área " + department.getNameDepartment();
+
+        return String.format(Locale.US, """
+                Eres un analista de eficiencia energética de IntelliSave, una plataforma que gestiona el consumo eléctrico de empresas con varias sedes en el Perú.
+                Analiza esta predicción de consumo y da recomendaciones de ahorro.
+
+                DATOS
+                Empresa: %s
+                Sede: %s
+                Predicción de: %s
+                Historial analizado: %s al %s (%d días con consumo, %.2f kWh en total, %.2f kWh promedio por día con consumo)
+                Consumo de los últimos 7 días: %.2f kWh. Los 7 días anteriores: %.2f kWh
+                Tendencia de la regresión lineal: %+.3f kWh por día
+                Periodo predicho: %s al %s (%d días)
+                Consumo estimado: %.2f kWh, costo estimado S/ %.2f, tarifa S/ %.4f por kWh
+                Confianza del modelo (R²): %.1f %%
+                Equipos con consumo en el historial:
+                %s
+                INSTRUCCIONES
+                Responde en español, en texto plano, sin markdown ni asteriscos, usando exactamente este formato:
+                ANALISIS: dos o tres oraciones que expliquen la tendencia del consumo y qué significa la predicción para el costo.
+                RECOMENDACIONES:
+                - recomendación 1
+                - recomendación 2
+                - recomendación 3
+                Da entre 3 y 4 recomendaciones concretas, de máximo 30 palabras cada una, sobre mantenimiento preventivo, optimización de horarios de operación o reemplazo de equipos ineficientes.
+                Usa los nombres de los equipos y las cifras de los datos. No inventes datos que no estén arriba.
+                """,
+                department.getBranch().getCompany().getComercialNamecompany(),
+                department.getBranch().getNameBranch(),
+                objetivo,
+                inicioHistorial, finHistorial, porDia.size(), totalHistorial, promedioDiaConDatos,
+                ultimaSemana, semanaAnterior,
+                tendencia,
+                inicio, p.getEndDatePrediction(), diasPeriodo,
+                p.getKwhPrediction(), p.getCostPrediction(), tarifa,
+                p.getConfidenceLevelAI(),
+                equipos.isEmpty() ? "- Sin registros en el historial\n" : equipos.toString());
+    }
+
+    private double sumarEntre(Map<LocalDate, Double> porDia, LocalDate desde, LocalDate hasta) {
+        return porDia.entrySet().stream()
+                .filter(e -> !e.getKey().isBefore(desde) && !e.getKey().isAfter(hasta))
+                .mapToDouble(Map.Entry::getValue)
+                .sum();
+    }
+
+    private double pendienteDiaria(Map<LocalDate, Double> porDia, LocalDate hasta) {
+        if (porDia.isEmpty()) {
+            return 0;
+        }
+        LocalDate primerDia = Collections.min(porDia.keySet());
+        List<Double> serie = new ArrayList<>();
+        for (LocalDate dia = primerDia; !dia.isAfter(hasta); dia = dia.plusDays(1)) {
+            serie.add(porDia.getOrDefault(dia, 0.0));
+        }
+        int n = serie.size();
+        double mediaX = (n - 1) / 2.0;
+        double mediaY = serie.stream().mapToDouble(Double::doubleValue).average().orElse(0.0);
+        double sxy = 0;
+        double sxx = 0;
+        for (int i = 0; i < n; i++) {
+            double dx = i - mediaX;
+            sxy += dx * (serie.get(i) - mediaY);
+            sxx += dx * dx;
+        }
+        return (sxx == 0) ? 0 : sxy / sxx;
+    }
+
+    private String extraerAnalisis(String respuesta) {
+        String limpio = respuesta.replace("*", "").replace("#", "");
+        String[] lineas = limpio.split("\\R");
+        StringBuilder analisis = new StringBuilder();
+        boolean leyendo = false;
+        for (String linea : lineas) {
+            String texto = linea.trim();
+            String mayus = texto.toUpperCase(Locale.ROOT);
+            if (mayus.startsWith("ANALISIS") || mayus.startsWith("ANÁLISIS")) {
+                leyendo = true;
+                int dosPuntos = texto.indexOf(':');
+                texto = dosPuntos >= 0 ? texto.substring(dosPuntos + 1).trim() : "";
+            } else if (mayus.startsWith("RECOMENDACIONES")) {
+                break;
+            }
+            if (leyendo && !texto.isEmpty()) {
+                if (!analisis.isEmpty()) {
+                    analisis.append(' ');
+                }
+                analisis.append(texto);
+            }
+        }
+        return analisis.toString().trim();
+    }
+
+    private List<String> extraerRecomendaciones(String respuesta) {
+        String limpio = respuesta.replace("*", "").replace("#", "");
+        String[] lineas = limpio.split("\\R");
+        List<String> recomendaciones = new ArrayList<>();
+        boolean leyendo = false;
+        for (String linea : lineas) {
+            String texto = linea.trim();
+            if (texto.toUpperCase(Locale.ROOT).startsWith("RECOMENDACIONES")) {
+                leyendo = true;
+                continue;
+            }
+            if (leyendo && !texto.isEmpty()) {
+                String item = texto.replaceFirst("^(-|•|\\d+[.)])\\s*", "").trim();
+                if (!item.isEmpty()) {
+                    recomendaciones.add(item);
+                }
+            }
+        }
+        return recomendaciones.stream().limit(4).toList();
+    }
+
+    private String recortar(String texto, int maximo) {
+        return texto.length() <= maximo ? texto : texto.substring(0, maximo - 1).trim() + "…";
     }
 
     private double redondear(double valor) {

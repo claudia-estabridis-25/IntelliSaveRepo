@@ -18,4 +18,5 @@ public interface IConsumptionPredictionService {
     public void delete(Long id);
     public List<PredictionDTOList> evaluateFinishedPredictions();
     public List<PredictionDepartmentDTO> predictionsByDepartment();
+    public PredictionDTOList analyze(Long id);
 }

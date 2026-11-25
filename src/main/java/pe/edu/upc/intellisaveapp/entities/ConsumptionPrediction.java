@@ -46,6 +46,12 @@ public class ConsumptionPrediction {
     @Column(name = "statusPrediction", length = 20, nullable = false)
     private String statusPrediction; //En curso, Cumplida, Errada
 
+    @Column(name = "aiAnalysisPrediction", length = 1000)
+    private String aiAnalysisPrediction;
+
+    @Column(name = "aiRecommendationsPrediction", length = 2000)
+    private String aiRecommendationsPrediction;
+
 
     public ConsumptionPrediction() {
     }
@@ -158,4 +164,20 @@ public class ConsumptionPrediction {
     public String getStatusPrediction() { return statusPrediction; }
 
     public void setStatusPrediction(String statusPrediction) { this.statusPrediction = statusPrediction; }
+
+    public String getAiAnalysisPrediction() {
+        return aiAnalysisPrediction;
+    }
+
+    public void setAiAnalysisPrediction(String aiAnalysisPrediction) {
+        this.aiAnalysisPrediction = aiAnalysisPrediction;
+    }
+
+    public String getAiRecommendationsPrediction() {
+        return aiRecommendationsPrediction;
+    }
+
+    public void setAiRecommendationsPrediction(String aiRecommendationsPrediction) {
+        this.aiRecommendationsPrediction = aiRecommendationsPrediction;
+    }
 }
