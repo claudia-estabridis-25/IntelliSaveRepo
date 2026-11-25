@@ -1,6 +1,7 @@
 package pe.edu.upc.intellisaveapp.dtos;
 
 import java.time.LocalDate;
+import java.util.List;
 
 public class PredictionDTOList {
     private Long idPrediction;
@@ -19,6 +20,8 @@ public class PredictionDTOList {
     private String statusPrediction;   // En curso, Cumplida, Errada
     private Double realKwh;            // solo cuando ya fue evaluada
     private Double deviationPercent;   // % de diferencia entre lo real y lo predicho
+    private String aiAnalysis;
+    private List<String> aiRecommendations;
 
     public Long getIdPrediction() {
         return idPrediction;
@@ -146,5 +149,21 @@ public class PredictionDTOList {
 
     public void setDeviationPercent(Double deviationPercent) {
         this.deviationPercent = deviationPercent;
+    }
+
+    public String getAiAnalysis() {
+        return aiAnalysis;
+    }
+
+    public void setAiAnalysis(String aiAnalysis) {
+        this.aiAnalysis = aiAnalysis;
+    }
+
+    public List<String> getAiRecommendations() {
+        return aiRecommendations;
+    }
+
+    public void setAiRecommendations(List<String> aiRecommendations) {
+        this.aiRecommendations = aiRecommendations;
     }
 }

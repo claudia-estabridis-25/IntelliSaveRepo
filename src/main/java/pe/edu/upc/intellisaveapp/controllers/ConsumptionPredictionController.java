@@ -162,6 +162,16 @@ public class ConsumptionPredictionController {
         return ResponseEntity.ok(lista);
     }
 
+    //Genera o vuelve a generar el análisis de una predicción
+    @PostMapping("/{id}/analysis")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<PredictionDTOList> analizar(@PathVariable Long id) {
+        PredictionDTOList dto = pS.listById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("No existe una predicción con el id: " + id));
+        validarArea(dto.getIdDepartment());
+        return ResponseEntity.ok(pS.analyze(id));
+    }
+
     // ================================ MÉTODOS DE APOYO ====================================
     private void validarArea(Long idDepartment) {
         Department department = dS.listById(idDepartment)
