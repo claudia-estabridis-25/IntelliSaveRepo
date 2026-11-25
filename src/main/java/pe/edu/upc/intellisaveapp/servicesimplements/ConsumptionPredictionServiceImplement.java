@@ -29,6 +29,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class ConsumptionPredictionServiceImplement implements IConsumptionPredictionService {
@@ -46,6 +48,7 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
     private static final int MAX_ANALISIS = 1000;
     private static final int MAX_RECOMENDACIONES = 2000;
     private static final int MAX_EQUIPOS_EN_PROMPT = 10;
+    private static final Logger log = LoggerFactory.getLogger(ConsumptionPredictionServiceImplement.class);
 
     private final IConsumptionPredictionRepository pR;
     private final IConsumptionRecordService crS;
@@ -321,6 +324,7 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
             pR.save(p);
             return true;
         } catch (RuntimeException e) {
+            log.warn("No se pudo generar el análisis con Gemini: {}", e.getMessage());
             return false;
         }
     }
