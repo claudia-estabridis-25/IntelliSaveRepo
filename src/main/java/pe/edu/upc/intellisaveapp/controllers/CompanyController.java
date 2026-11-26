@@ -98,8 +98,9 @@ public class CompanyController {
                         )
                 );
 
-        //Validando que el usuario autenticado pertenezca a la empresa que está intentando actualizar
-        acceso.validarEmpresa(existente.getIdCompany());
+        //HU110: solo el admin de la plataforma puede actualizar los datos de una empresa
+        //(el admin de una empresa no puede cambiar el RUC ni la razón social de la suya)
+        acceso.validarAdminDePlataforma();
 
         Company company = mP.map(dto, Company.class);
 
