@@ -15,6 +15,7 @@ import pe.edu.upc.intellisaveapp.exceptions.ResourceNotFoundException;
 import pe.edu.upc.intellisaveapp.securities.CompanyAccess;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IDepartmentService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IEquipmentService;
+import pe.edu.upc.intellisaveapp.dtos.EquipmentCategoryReportDTO;
 
 import java.net.URI;
 import java.util.List;
@@ -173,6 +174,19 @@ public class EquipmentController {
 
         EquipmentDTOList dto = mP.map(equipment, EquipmentDTOList.class);
         return ResponseEntity.ok(dto);
+    }
+
+    @GetMapping("/by-category")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR')")
+    public ResponseEntity<List<EquipmentCategoryReportDTO>> reportePorCategoria() {
+        Long idCompany = acceso.idEmpresaUsuario();
+
+        List<EquipmentCategoryReportDTO> lista = eS.reportByCategory()
+                .stream()
+                .filter(fila -> idCompany == null || fila.getIdCompany().equals(idCompany))
+                .toList();
+
+        return ResponseEntity.ok(lista);
     }
 
     //Busca un equipo por su id y valida que pertenezca a la empresa del usuario autenticado.
