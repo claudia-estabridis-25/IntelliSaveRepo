@@ -15,6 +15,7 @@ import pe.edu.upc.intellisaveapp.servicesinterfaces.IBranchService;
 import pe.edu.upc.intellisaveapp.servicesinterfaces.IClimateRecordService;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -78,9 +79,15 @@ public class ClimateRecordServiceImplement implements IClimateRecordService {
 
         WeatherApiResponse.Current actual = response.getCurrent();
 
-        ClimateRecord record = new ClimateRecord();
+        // Un solo registro por sede y por hora: si ya hay uno de esta hora (por la tarea automática
+        // o por una consulta manual), se actualiza con los datos nuevos en lugar de duplicarlo.
+        LocalDateTime ahora = LocalDateTime.now();
+        ClimateRecord record = cR.findFirstByBranch_IdBranchOrderByClimateDateTimeDesc(branch.getIdBranch())
+                .filter(ultimo -> ultimo.getClimateDateTime().truncatedTo(ChronoUnit.HOURS)
+                        .equals(ahora.truncatedTo(ChronoUnit.HOURS)))
+                .orElseGet(ClimateRecord::new);
         record.setBranch(branch);
-        record.setClimateDateTime(LocalDateTime.now());
+        record.setClimateDateTime(ahora);
         record.setTemperature(valor(actual.getTemperature()));
         record.setHumidity(valor(actual.getHumidity()));
         record.setWindSpeed(valor(actual.getWindSpeed()));

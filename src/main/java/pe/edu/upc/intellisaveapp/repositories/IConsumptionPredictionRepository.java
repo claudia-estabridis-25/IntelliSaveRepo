@@ -11,6 +11,9 @@ import java.util.List;
 @Repository
 public interface IConsumptionPredictionRepository extends JpaRepository<ConsumptionPrediction, Long> {
     // Predicciones en un estado cuyo periodo terminó antes de la fecha dada (para HU055)
+    // Todas las predicciones cuyo periodo ya terminó, sin importar su estado (para reevaluarlas)
+    List<ConsumptionPrediction> findByEndDatePredictionBefore(LocalDate endDatePrediction);
+
     List<ConsumptionPrediction> findByStatusPredictionAndEndDatePredictionBefore(String statusPrediction,
                                                                                  LocalDate fecha);
     // Consulta nativa con JOIN: cantidad de predicciones, kWh predicho y confianza promedio por área y estado

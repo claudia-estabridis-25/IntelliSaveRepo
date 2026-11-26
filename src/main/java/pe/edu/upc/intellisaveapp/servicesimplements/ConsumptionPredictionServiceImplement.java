@@ -212,17 +212,22 @@ public class ConsumptionPredictionServiceImplement implements IConsumptionPredic
 
     @Override
     public List<PredictionDTOList> evaluateFinishedPredictions() {
-        // CA04: solo se evalúan las predicciones cuyo periodo ya terminó
-        List<ConsumptionPrediction> terminadas =
-                pR.findByStatusPredictionAndEndDatePredictionBefore(EN_CURSO, LocalDate.now());
+        // CA04: solo se evalúan las predicciones cuyo periodo ya terminó.
+        // Se reevalúan también las que ya estaban Cumplida o Errada: si después se registra o corrige
+        // un consumo de ese periodo, el consumo real cambia y el estado debe seguirlo (antes quedaba congelado).
+        List<ConsumptionPrediction> cambiadas = new ArrayList<>();
 
-        for (ConsumptionPrediction p : terminadas) {
+        for (ConsumptionPrediction p : pR.findByEndDatePredictionBefore(LocalDate.now())) {
             double real = consumoReal(p);
-            p.setStatusPrediction(dentroDelMargen(p.getKwhPrediction(), real) ? CUMPLIDA : ERRADA);
-            pR.save(p);
+            String nuevoEstado = dentroDelMargen(p.getKwhPrediction(), real) ? CUMPLIDA : ERRADA;
+            if (!nuevoEstado.equals(p.getStatusPrediction())) {
+                p.setStatusPrediction(nuevoEstado);
+                pR.save(p);
+                cambiadas.add(p);
+            }
         }
 
-        return terminadas.stream().map(this::toDTO).toList();
+        return cambiadas.stream().map(this::toDTO).toList();
     }
 
     // Consulta nativa: predicciones por área y estado
