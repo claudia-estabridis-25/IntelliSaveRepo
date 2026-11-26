@@ -1,5 +1,6 @@
 package pe.edu.upc.intellisaveapp.servicesinterfaces;
 
+import pe.edu.upc.intellisaveapp.dtos.EquipmentCategoryReportDTO;
 import pe.edu.upc.intellisaveapp.entities.Equipment;
 
 import java.util.List;
@@ -12,4 +13,5 @@ public interface IEquipmentService {
     public void update(Equipment e);
     public Optional<Equipment> listById(Long id);
     public void delete(Long id);
+    public List<EquipmentCategoryReportDTO> reportByCategory();
 }
