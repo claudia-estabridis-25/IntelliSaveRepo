@@ -37,6 +37,7 @@ public class BranchController {
 
     //Listar todas las sedes
     @GetMapping //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<BranchDTOList>> listar() {
         // Trayendo el id de la empresa del usuario autenticado, si es que tiene uno, para validar que solo
         // pueda ver la información de su propia empresa. Si el usuario autenticado es admin, entonces idEmpresa
@@ -157,6 +158,7 @@ public class BranchController {
 
     //Listar sede por id (HU058)
     @GetMapping("/{id}") //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<BranchDTOInsert> buscarPorId(@PathVariable Long id) {
         Branch branch = bS.listById(id)
                 .orElseThrow(() ->

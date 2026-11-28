@@ -67,6 +67,7 @@ public class DepartmentController {
 
     //Listar todas las áreas
     @GetMapping //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<DepartmentDTO>> list() {
         Long idEmpresa = acceso.idEmpresaUsuario();
 
@@ -147,6 +148,7 @@ public class DepartmentController {
 
     //Listar por id
     @GetMapping("/{id}") //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<DepartmentDTO> listById(@PathVariable Long id) {
         Department dep = dS.listById(id)
                 .orElseThrow(() ->
