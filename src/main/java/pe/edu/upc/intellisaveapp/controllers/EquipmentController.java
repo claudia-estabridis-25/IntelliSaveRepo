@@ -37,6 +37,7 @@ public class EquipmentController {
 
     //Listar equipos
     @GetMapping //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<EquipmentDTOList>> listar() {
         //Obteniendo el id de la empresa del usuario autenticado. Si es admin de la plataforma, devuelve null
         Long idCompany = acceso.idEmpresaUsuario();
@@ -126,6 +127,7 @@ public class EquipmentController {
 
     //Listar equipo por su ID
     @GetMapping("/{id}") //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<EquipmentDTOInsert> listarPorId(@PathVariable Long id) {
         //Busca el equipo y valida que sea de la empresa del usuario autenticado
         Equipment equipment = findEquipment(id);

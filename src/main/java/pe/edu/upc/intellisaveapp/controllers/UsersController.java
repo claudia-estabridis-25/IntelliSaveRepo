@@ -195,12 +195,14 @@ public class UsersController {
 
     // HU041: ver mi perfil
     @GetMapping("/me")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<UsersDTOList> miPerfil() {
         return ResponseEntity.ok(toDTO(usuarioActual()));
     }
 
     // HU041: editar mi perfil
     @PutMapping("/me")
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<UsersDTOList> editarMiPerfil(@Valid @RequestBody ProfileUpdateDTO dto) {
         Users user = usuarioActual();
 

@@ -68,6 +68,7 @@ public class ConsumptionRecordController {
 
     //Listar todos los consumos
     @GetMapping //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<ConsumptionRecordDTOList>> listar() {
         //El admin ve todos los consumos y los demás solo los de su empresa
         return ResponseEntity.ok(filterByCompany(crS.list()));
@@ -146,6 +147,7 @@ public class ConsumptionRecordController {
 
     //Listar consumo por su ID
     @GetMapping("/{id}") //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<ConsumptionRecordDTOList> listarPorId(@PathVariable Long id) {
         //Busca el registro y valida que sea de la empresa del usuario autenticado
         ConsumptionRecord cr = findRecord(id);

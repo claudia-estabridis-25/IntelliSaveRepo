@@ -43,6 +43,7 @@ public class CompanyController {
 
     //Listar empresas
     @GetMapping //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<List<CompanyDTOList>> listar(){
         Long idEmpresa = acceso.idEmpresaUsuario(); //Obteniendo el id de la empresa del usuario autenticado
 
@@ -114,6 +115,7 @@ public class CompanyController {
 
     //Listar empresa por su ID
     @GetMapping("/{id}") //Cualquier usuario autenticado
+    @PreAuthorize("hasAnyRole('ADMIN','SUPERVISOR','EMPLOYEE')")
     public ResponseEntity<CompanyDTOInsert> listarPorId(@PathVariable Long id) {
         Company company = cS.listById(id)
                 .orElseThrow(() ->
